@@ -1,6 +1,8 @@
 # 深入探究C++对象模型以及GDB查看C++对象模型
 ## GDB 调试C++对象模型常用功能
 GDB 常用功能
+
+> set print asm-demangle on
 - 1 info vtbl class
 功能:Evaluate EXPRESSION and display the virtual function table for the
 resulting object.
@@ -53,9 +55,15 @@ ADT 和 OO 对于扩展性支持
 1 [Object-Oriented Programming Languages: Application and Interpretation](https://zhuanlan.zhihu.com/p/36836400)
 ## C++ 对象模型
 class 存在静态变量和非静态变量成员,非静态变量存放在class object之内,静态成员变量存放在class object之外;
-```mermaid
-graph LR;
-　　Portal-->|发布/更新配置|Apollo配置中心;
-　　Apollo配置中心-->|实时推送|App;
-　　App-->|实时查询|Apollo配置中心;
+
+### 单一的一般继承和虚继承
+代码[Code](../example/object_model_ex_1.cc)
+#### 单一的一般继承内存布局
+```dot 
+
+
+```
+####
+
+```dot 
 ```
