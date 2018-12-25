@@ -1,0 +1,38 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/ruoshui/study/cpp/db/kv_store/boltdb/db.cc
+db.h
+/home/ruoshui/study/cpp/db/kv_store/boltdb/db.h
+
+/home/ruoshui/study/cpp/db/kv_store/boltdb/db.h
+cstdio
+-
+cstdint
+-
+string
+-
+fstream
+-
+vector
+-
+mutex
+-
+
+/home/ruoshui/study/cpp/db/kv_store/boltdb/error.cc
+error.h
+/home/ruoshui/study/cpp/db/kv_store/boltdb/error.h
+cassert
+-
+cstring
+-
+
+/home/ruoshui/study/cpp/db/kv_store/boltdb/error.h
+string
+-
+

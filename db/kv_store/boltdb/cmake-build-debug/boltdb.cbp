@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="boltdb"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j4 -f &quot;/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/gmake -j4 -f &quot;/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j4 -f &quot;/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j4 -f &quot;/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="rebuild_cache">
+				<Option working_dir="/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j4 -f &quot;/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="/usr/bin/gmake -j4 -f &quot;/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j4 -f &quot;/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j4 -f &quot;/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="edit_cache">
+				<Option working_dir="/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j4 -f &quot;/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="/usr/bin/gmake -j4 -f &quot;/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j4 -f &quot;/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j4 -f &quot;/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="boltdb">
+				<Option output="/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug/boltdb" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/ruoshui/study/cpp/db/kv_store/boltdb/."/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/x86_64-suse-linux"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+					<Add directory="/usr/lib64/gcc/x86_64-suse-linux/4.8/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib64/gcc/x86_64-suse-linux/4.8/include-fixed"/>
+					<Add directory="/usr/lib64/gcc/x86_64-suse-linux/4.8/../../../../x86_64-suse-linux/include"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j4 -f &quot;/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug/Makefile&quot;  VERBOSE=1 boltdb"/>
+					<CompileFile command="/usr/bin/gmake -j4 -f &quot;/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j4 -f &quot;/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j4 -f &quot;/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="boltdb/fast">
+				<Option output="/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug/boltdb" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/home/ruoshui/study/cpp/db/kv_store/boltdb/."/>
+					<Add directory="/usr/include/c++/4.8"/>
+					<Add directory="/usr/include/c++/4.8/x86_64-suse-linux"/>
+					<Add directory="/usr/include/c++/4.8/backward"/>
+					<Add directory="/usr/lib64/gcc/x86_64-suse-linux/4.8/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib64/gcc/x86_64-suse-linux/4.8/include-fixed"/>
+					<Add directory="/usr/lib64/gcc/x86_64-suse-linux/4.8/../../../../x86_64-suse-linux/include"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/gmake -j4 -f &quot;/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug/Makefile&quot;  VERBOSE=1 boltdb/fast"/>
+					<CompileFile command="/usr/bin/gmake -j4 -f &quot;/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/gmake -j4 -f &quot;/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/gmake -j4 -f &quot;/home/ruoshui/study/cpp/db/kv_store/boltdb/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/home/ruoshui/study/cpp/db/kv_store/boltdb/Tx.cc">
+			<Option target="boltdb"/>
+		</Unit>
+		<Unit filename="/home/ruoshui/study/cpp/db/kv_store/boltdb/Tx.h">
+			<Option target="boltdb"/>
+		</Unit>
+		<Unit filename="/home/ruoshui/study/cpp/db/kv_store/boltdb/bucket.cc">
+			<Option target="boltdb"/>
+		</Unit>
+		<Unit filename="/home/ruoshui/study/cpp/db/kv_store/boltdb/bucket.h">
+			<Option target="boltdb"/>
+		</Unit>
+		<Unit filename="/home/ruoshui/study/cpp/db/kv_store/boltdb/db.cc">
+			<Option target="boltdb"/>
+		</Unit>
+		<Unit filename="/home/ruoshui/study/cpp/db/kv_store/boltdb/db.h">
+			<Option target="boltdb"/>
+		</Unit>
+		<Unit filename="/home/ruoshui/study/cpp/db/kv_store/boltdb/error.cc">
+			<Option target="boltdb"/>
+		</Unit>
+		<Unit filename="/home/ruoshui/study/cpp/db/kv_store/boltdb/error.h">
+			<Option target="boltdb"/>
+		</Unit>
+		<Unit filename="/home/ruoshui/study/cpp/db/kv_store/boltdb/freelist.cc">
+			<Option target="boltdb"/>
+		</Unit>
+		<Unit filename="/home/ruoshui/study/cpp/db/kv_store/boltdb/freelist.h">
+			<Option target="boltdb"/>
+		</Unit>
+		<Unit filename="/home/ruoshui/study/cpp/db/kv_store/boltdb/page.cc">
+			<Option target="boltdb"/>
+		</Unit>
+		<Unit filename="/home/ruoshui/study/cpp/db/kv_store/boltdb/page.h">
+			<Option target="boltdb"/>
+		</Unit>
+		<Unit filename="/home/ruoshui/study/cpp/db/kv_store/boltdb/port.h">
+			<Option target="boltdb"/>
+		</Unit>
+		<Unit filename="/home/ruoshui/study/cpp/db/kv_store/boltdb/readme.md">
+			<Option target="boltdb"/>
+		</Unit>
+		<Unit filename="/home/ruoshui/study/cpp/db/kv_store/boltdb/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>
