@@ -8,7 +8,6 @@
 
 namespace boltdb {
 
-
     void freelist::read(boltdb::page *p) {
         int idx = 0;
         int count = p->count;
