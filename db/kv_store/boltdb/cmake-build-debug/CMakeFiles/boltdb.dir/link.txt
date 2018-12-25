@@ -1,1 +1,0 @@
-/usr/bin/c++  -g   CMakeFiles/boltdb.dir/db.cc.o CMakeFiles/boltdb.dir/error.cc.o CMakeFiles/boltdb.dir/bucket.cc.o CMakeFiles/boltdb.dir/Tx.cc.o CMakeFiles/boltdb.dir/page.cc.o CMakeFiles/boltdb.dir/freelist.cc.o  -o boltdb 
