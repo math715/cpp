@@ -5,6 +5,8 @@
 #include <fstream>
 #include <vector>
 #include <mutex>
+#include "bucket.h"
+#include "error.h"
 
 namespace boltdb {
     const uint64_t maxMmapStep = 1<<30;
@@ -14,23 +16,23 @@ namespace boltdb {
 // Default values if not set in a DB instance.
 
     const int DefaultMaxBatchSize = 1000;
-    const std::chrono::milliseconds DefaultMaxBatchDelay = 10;
+//    const std::chrono::milliseconds DefaultMaxBatchDelay = 10;
     const int DefaultAllocSize = 16 * 1024 * 1024;
     const int defaultPageSize = 4 * 1024; // 4k
     using pgid = uint64_t;
-    class bucket;
     class page;
-    class meta {
-        private:
+    struct meta {
         uint32_t magic;
         uint32_t version;
         uint32_t pageSize;
         uint32_t flags;
         bucket   root;
         pgid     freelist;
-        pgid     pgid;
+        pgid     pgcnt;
         pgid     txid;  
-        uint64_t checksum;   
+        uint64_t checksum;
+        uint64_t sum64();
+        Status Validate();
     };
 
 
@@ -55,7 +57,7 @@ namespace boltdb {
         int FreeListInues;
         int TxN;
         int OpenTxN;
-        TxStats TxStats;
+        TxStats *txStats;
     };
 
     class DB;
@@ -76,9 +78,9 @@ namespace boltdb {
         int    MaxBatchSize;
         std::chrono::milliseconds MaxBatchDelay;
         int    AllocSize;
-        std::fstream file;
+        FILE   *file;
         char * dataref;
-        char data[maxMmapStep];
+        char * data;
         int  datasz;
         int  filesz;
         meta * meta0;
@@ -98,19 +100,19 @@ namespace boltdb {
         std::mutex statlock;
         bool readOnly;
 
-        page *pageInBuffer(char *byte, pgid id);
-        Status mmap(int minsz) ;
-        page *page(pgid id);
-        meta *meta() ;
-    std::string Path( ) {
-        return path;
-    }
-    std::string Gostring() {
-        std::string result = "blot.DB{path:" + path + "}";
-        return result;
-    }
-    static Status open( std::string path, Options *ops, DB **pDB) ;
-	private:
+        Status Mmap(int minsz) ;
+        std::string Path( ) {
+            return path;
+        }
+        std::string Gostring() {
+            std::string result = "blot.DB{path:" + path + "}";
+            return result;
+        }
+        static Status open( std::string path, Options *ops, DB **pDB) ;
+        Status init();
+        page * pageInBuffer(char *buf, pgid id);
+        page * Page(pgid id);
+    private:
 
 
     };

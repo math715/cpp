@@ -5,6 +5,13 @@
 #include <unistd.h>
 #include "db.h"
 #include "error.h"
+#include "port.h"
+#include "page.h"
+#include "bucket.h"
+#include "Tx.h"
+#include "freelist.h"
+
+#include <cstdio>
 
 namespace boltdb {
     Status DB::open(std::string path, boltdb::Options *ops, boltdb::DB **pDB) {
@@ -19,7 +26,7 @@ namespace boltdb {
         db->MmapFlags = pops->MmapFlags;
 
         db->MaxBatchSize = DefaultMaxBatchSize;
-        db->MaxBatchDelay = DefaultMaxBatchDelay;
+//        db->MaxBatchDelay = DefaultMaxBatchDelay;
         db->AllocSize = DefaultAllocSize;
 
         int flag  = O_RDWR;
@@ -28,7 +35,9 @@ namespace boltdb {
             db->readOnly = true;
 
         }
-        int fd = open(path.c_str(), flag|O_CREAT, 0666);
+//        int fd = ::open(path.c_str(), flag|O_CREAT, 0666);
+        db->file = fopen(path.c_str(), "r+");
+        int fd = fileno(db->file);
         if (fd == -1) {
             Status status = Status::NotFound(path) ;
             return status;
@@ -50,15 +59,15 @@ namespace boltdb {
                 Status status = Status::IOError(path);
                 return status;
             }
-            auto m = db->pageInBuffer(buf, 0)->meta();
-            Status status = m.Validate();
+            auto m = db->pageInBuffer(buf, 0)->Meta();
+            Status status = m->Validate();
             if (!status.ok()) {
                 return status;
             }
             db->pageSize = 0x1000;
         }
 
-        mmaplock.lock();
+//        mmaplock.lock();
         auto size = sb.st_size < pops->InitialMmapSize? pops->InitialMmapSize: sb.st_size;
 
         for (uint32_t i = 15; i <= 30; ++i) {
@@ -67,41 +76,117 @@ namespace boltdb {
                 break;
             }
         }
-        db->dataref = mmap(NULL, size, PROT_WRITE, MAP_PRIVATE, fd, 0);
+        db->dataref = reinterpret_cast<char *>(mmap(NULL, size, PROT_WRITE, MAP_PRIVATE, fd, 0));
         if (db->dataref == MAP_FAILED) {
             Status status = Status::IOError("mmap");
             return status;
         }
-        db->meta0 = db->page(0)->meta();
-        db->meta1 = db->page(1)->meta();
+        db->data = db->dataref;
+        db->meta0 = db->Page(0)->Meta();
+        db->meta1 = db->Page(1)->Meta();
 
 
-        db->freelist_ = new freelist;
-        db->freelist_->read()
-        return ;
+        db->freelist_ = new freelist();
+        db->freelist_->read(db->Page(db.Meta().freelist));
+        return Status::Ok();
     }
 
     page * DB::pageInBuffer(char *byte, boltdb::pgid id) {
-        return reinterpret_cast<page *>(&byte[pageSize * id]);
+        page *p =  reinterpret_cast<page *>(&byte[pageSize * id]);
+        return p;
     }
 
-    page* DB::page(boltdb::pgid id) {
-        auto pos = id * pageSize;
-        return reinterpret_cast<page*>(&data[pos]);
+//    page* DB::page(boltdb::pgid id) {
+//        auto pos = id * pageSize;
+//        return reinterpret_cast<page*>(&data[pos]);
+//    }
+//    meta * DB::meta() {
+//        meta *metaA = meta0;
+//        meta *metaB = meta1;
+//        if (meta1->txid > meta0->txid) {
+//            metaA = meta1;
+//            metaB = meta0;
+//        }
+//        if (metaA->Validate() )
+//            return metaA;
+//        if ( metaB->Validate()) {
+//            return metaB;
+//        }
+//        return nullptr;
+//    }
+
+
+    Status DB::init() {
+        pageSize = SysCall::Getpagesize();
+        char *buf = new char[4 * pageSize];
+
+        for (int i = 0; i < 2; ++i) {
+            page * p = pageInBuffer(buf, i);
+            p->id = pgid(i);
+            p->flags = metaPageFlag;
+            meta *m = p->Meta();
+            m->magic = magic;
+            m->version = version;
+            m->pageSize = uint32_t (pageSize);
+            m->freelist = 2;
+            m->root.root = 3;
+            m->root.sequence = 0;
+            m->pgcnt = 4;
+            m->txid = txid(i);
+            m->checksum = m->sum64();
+        }
+
+        page *p = pageInBuffer(buf, 2);
+        p->id = pgid(2);
+        p->flags = freelistPageFlag;
+        p->count = 0;
+
+        p = pageInBuffer(buf, 3);
+        p->id = pgid(3);
+        p->flags = leafPageFlag;
+        p->count = 0;
+
+
+
+        auto result = fwrite(buf, sizeof(char), 4 * pageSize, file);
+        if (result != 4 * pageSize) {
+            Status status = Status::IOError("write file ");
+            return status;
+        }
+        int fd = fileno(file);
+        if (fdatasync(fd) != 0) {
+            Status status = Status::IOError("data sync file ");
+
+            return status;
+        }
+        Status status = Status::Ok();
+        return status;
     }
-    meta * DB::meta() {
-        meta *metaA = meta0;
-        meta *metaB = meta1;
-        if (meta1->txid > meta0->txid) {
-            metaA = meta1;
-            metaB = meta0;
+
+
+    page* DB::Page(boltdb::pgid id) {
+
+    }
+
+
+     Status meta::Validate() {
+        if (magic != boltdb::magic) {
+                    Status stat = Status::InvalidArgument("magic ");
+                    return stat;
+            } else if (version != boltdb::version) {
+                    Status stat = Status::InvalidArgument("version ");
+                    return stat;
+            } else if (checksum != 0 && checksum != sum64()) {
+                Status stat = Status::InvalidArgument("checksum ");
+                return stat;
+            }
         }
-        if (metaA->Validate() )
-            return metaA;
-        if ( metaB->Validate()) {
-            return metaB;
-        }
-        return nullptr;
+        return Status::OK();
+    }
+
+    uint64_t meta::sum64() {
+        return FNV::FNV_64a(reinterpret_cast<char*>(this),sizeof (meta));
+
     }
 
 }

@@ -3,20 +3,23 @@
 //
 
 
-#pragma  once;
+#pragma  once
 
 #include <cstdint>
 #include <string>
 
 namespace boltdb {
     using pgid = uint64_t ;
-    class meta;
-    class page {
-    public:
+    struct meta;
+    enum {
+        branchPageFlag = 0x01,
+        leafPageFlag = 0x02,
+        metaPageFlag = 0x04,
+        freelistPageFlag = 0x10
+    };
+    struct page {
         std::string typ();
-        meta *meta() {
-            return reinterpret_cast<meta*>(ptr);
-        }
+        meta *Meta();
         pgid id;
         uint16_t  flags;
         uint16_t  count;

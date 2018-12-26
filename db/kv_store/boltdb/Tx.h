@@ -7,6 +7,7 @@
 #include <chrono>
 
 namespace boltdb {
+    using txid = uint64_t ;
     class TxStats {
         int PageCount;
         int PageAlloc;
@@ -34,4 +35,3 @@ namespace boltdb {
 }
 
 
-#endif //BOLTDB_TX_H
