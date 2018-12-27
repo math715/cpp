@@ -12,6 +12,7 @@
 #include "freelist.h"
 
 #include <cstdio>
+#include <cassert>
 
 namespace boltdb {
     Status DB::open(std::string path, boltdb::Options *ops, boltdb::DB **pDB) {
@@ -87,7 +88,7 @@ namespace boltdb {
 
 
         db->freelist_ = new freelist();
-        db->freelist_->read(db->Page(db.Meta().freelist));
+        db->freelist_->read(db->Page(db->Meta()->freelist));
         return Status::Ok();
     }
 
@@ -165,6 +166,25 @@ namespace boltdb {
 
 
     page* DB::Page(boltdb::pgid id) {
+        auto pos = id * pageSize;
+        return reinterpret_cast<page *>(&data[pos]);
+    }
+
+    meta* DB::Meta() {
+        auto metaA = meta0;
+        auto metaB = meta1;
+
+        if (meta1->txid > meta0->txid) {
+            metaA = meta1;
+            metaB = meta0;
+        }
+        if (metaA->Validate().ok()) {
+            return metaA;
+        }
+        if (metaB->Validate().ok()) {
+            return metaB;
+        }
+        assert(true);
 
     }
 

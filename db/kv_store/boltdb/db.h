@@ -112,6 +112,7 @@ namespace boltdb {
         Status init();
         page * pageInBuffer(char *buf, pgid id);
         page * Page(pgid id);
+        meta * Meta();
     private:
 
 
