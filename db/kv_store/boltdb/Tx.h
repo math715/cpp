@@ -5,6 +5,7 @@
 #pragma once
 
 #include <chrono>
+#include "bucket.h"
 
 namespace boltdb {
     using txid = uint64_t ;
@@ -26,7 +27,17 @@ namespace boltdb {
 
 
     };
-    class Tx {
+    class DB;
+    struct meta;
+    struct Tx {
+        bool writable;
+        bool managed;
+        DB   *db;
+        meta  *meta;
+        Bucket root;
+        std::map<pgid, page*> pages;
+        TxStats stats;
+        int writeFlag;
 
 
 

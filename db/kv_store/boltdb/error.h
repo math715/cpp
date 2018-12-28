@@ -24,7 +24,8 @@ namespace boltdb {
             return Status(kIOError, msg, msg2);
         }
         bool ok() const {            return state_ == nullptr;        }
-        bool IsNotFound() const {            return code() == kNotFound;        }
+        bool IsNotFound() const {            return code() == kNotFound;  }
+        bool IsCorruption() const { return code() == kCorruption;}
     private:
         const char * state_;
         enum Code {

@@ -12,12 +12,18 @@ namespace boltdb {
     using pgid = uint64_t ;
     using txid = uint64_t ;
     class page;
+    class Status;
     class freelist {
     public:
-        std::vector<pgid> ids;
+        std::vector<pgid> ids_;
         std::map<txid, std::vector<pgid>> pending;
         std::map<pgid, bool> cache;
         void read(page *p);
+        Status write(page *p);
+        void reindex();
+        int count();
+        void copyall(std::vector<pgid> &dst);
+
     };
 
 }

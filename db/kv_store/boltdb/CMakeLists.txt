@@ -11,4 +11,4 @@ add_executable(boltdb
         error.cc
         error.h
         port.h
-        readme.md bucket.cc bucket.h Tx.cc Tx.h page.cc page.h freelist.cc freelist.h)
+        readme.md bucket.cc bucket.h Tx.cc Tx.h page.cc page.h freelist.cc freelist.h Cursor.cc Cursor.h node.cc node.h)

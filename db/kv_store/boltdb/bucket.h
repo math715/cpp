@@ -10,7 +10,7 @@
 
 namespace  boltdb {
     class Tx;
-    class node;
+    struct node;
     struct page;
     const int MaxKeySize = 32768;
     const int MaxValueSize = 2147483646; // (1<<31) - 2
@@ -33,7 +33,7 @@ namespace  boltdb {
     const double DefaultFillPercent = 0.5;
 
 
-    class Bucket : public bucket{
+    struct Bucket : public bucket{
     public:
         Bucket(Tx *tx);
     private:

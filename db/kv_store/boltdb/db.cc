@@ -193,20 +193,19 @@ namespace boltdb {
         if (magic != boltdb::magic) {
                     Status stat = Status::InvalidArgument("magic ");
                     return stat;
-            } else if (version != boltdb::version) {
+        } else if (version != boltdb::version) {
                     Status stat = Status::InvalidArgument("version ");
                     return stat;
-            } else if (checksum != 0 && checksum != sum64()) {
+         } else if (checksum != 0 && checksum != sum64()) {
                 Status stat = Status::InvalidArgument("checksum ");
                 return stat;
-            }
         }
-        return Status::OK();
+         Status stat = Status::Ok();
+         return stat;
     }
 
     uint64_t meta::sum64() {
         return FNV::FNV_64a(reinterpret_cast<char*>(this),sizeof (meta));
-
     }
 
 }
