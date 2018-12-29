@@ -33,17 +33,18 @@ namespace  boltdb {
     const double DefaultFillPercent = 0.5;
 
 
-    struct Bucket : public bucket{
+    struct Bucket : public bucket  {
     public:
         Bucket(Tx *tx);
-    private:
         Tx *tx;
+//        bucket bucket_;
 
         std::map<std::string, Bucket*> buckets;
         page *page_;
         node *rootNode;
         std::map<pgid, node *> nodes;
         double FillPercent;
+        std::pair<page *, node *>  pageNode(pgid id);
     };
 
 

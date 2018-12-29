@@ -32,16 +32,14 @@ namespace boltdb {
     struct Tx {
         bool writable;
         bool managed;
-        DB   *db;
-        meta  *meta;
+        DB   *db_;
+        meta  *meta_;
         Bucket root;
         std::map<pgid, page*> pages;
         TxStats stats;
         int writeFlag;
-
-
-
-
+        void init(DB *db);
+        page *Page(pgid id);
     };
 }
 

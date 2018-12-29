@@ -17,6 +17,11 @@ namespace boltdb {
         metaPageFlag = 0x04,
         freelistPageFlag = 0x10
     };
+    struct branchPageElement  {
+        uint32_t pos;
+        uint32_t ksize;
+        pgid  pgid_;
+    };
     struct page {
         std::string typ();
         meta *Meta();
@@ -25,6 +30,8 @@ namespace boltdb {
         uint16_t  count;
         uint32_t  overflow;
         uint32_t  *ptr;
+
+        branchPageElement*       BranchPageElement(uint16_t index) ;
 
     };
 }

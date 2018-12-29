@@ -15,11 +15,15 @@ namespace boltdb {
         page *page_;
         node *node_;
         int   index;
+        bool isLeaf();
+        int count();
     };
     struct Cursor {
         Bucket *bucket;
         std::vector<elemRef> stack;
         std::pair<std::vector<char>, std::vector<char>> First();
+        void first();
+        std::tuple<std::vector<char>, std::vector<char>, uint32_t> next();
     };
 
 
