@@ -15,7 +15,7 @@ namespace  boltdb {
         uint32_t flags;
         pgid pgid_;
         std::vector<char> key;
-        std::vector<char> byte;
+        std::vector<char> value;
     };
     struct node {
         Bucket *bucket;

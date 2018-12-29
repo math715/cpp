@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace boltdb {
     using pgid = uint64_t ;
@@ -22,6 +23,14 @@ namespace boltdb {
         uint32_t ksize;
         pgid  pgid_;
     };
+    struct leafPageElement {
+        uint32_t pos;
+        uint32_t ksize;
+        uint32_t vsize;
+        pgid  pgid_;
+        std::vector<char> key();
+        std::vector<char> value();
+    };
     struct page {
         std::string typ();
         meta *Meta();
@@ -32,6 +41,7 @@ namespace boltdb {
         uint32_t  *ptr;
 
         branchPageElement*       BranchPageElement(uint16_t index) ;
+        leafPageElement * LeafPageElement(uint16_t index);
 
     };
 }

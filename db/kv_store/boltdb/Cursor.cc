@@ -82,12 +82,14 @@ namespace boltdb {
                     // If we've hit the root page then stop and return. This will leave the
                     // cursor on the last element of the last page.
                     if (i == -1) {
-                            return std::make_tuple(nullptr, nullptr, 0);
+                            std::vector<char> key, value;
+                            return std::make_tuple(key, value, 0);
                     }
 
                     // Otherwise start from where we left off in the stack and find the
                     // first element of the first leaf page.
-                    c.stack = c.stack[:i+1];
+//                    stack = c.stack[:i+1];
+                    stack.resize(i+1);
                     first();
 
                     // If this is an empty page then restart and move back up the stack.
@@ -96,8 +98,26 @@ namespace boltdb {
                             continue;
                     }
 
-                    return keyValue()
+                    return keyValue();
             }
 
+    }
+
+    std::tuple<std::vector<char>, std::vector<char>, uint32_t> Cursor::keyValue() {
+            std::vector<char> key, value;
+        auto &ref = stack[stack.size()-1];
+        if (ref.count() == 0 || ref.index >= ref.count()) {
+            return std::make_tuple(key, value, 0);
+        }
+
+// Retrieve value from node.
+        if (ref.node_ != nullptr) {
+            auto inode = ref.node_->inodes[ref.index];
+            return std::make_tuple(inode->key, inode->key, inode->flags);
+        }
+
+// Or retrieve value from page.
+        auto elem = ref.page_->LeafPageElement(uint16_t(ref.index));
+        return std::make_tuple(elem->key(), elem->value(), elem->flags);
     }
 }

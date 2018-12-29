@@ -5,6 +5,7 @@
 
 
 #include <vector>
+#include <cstdint>
 
 namespace boltdb {
 
@@ -24,6 +25,7 @@ namespace boltdb {
         std::pair<std::vector<char>, std::vector<char>> First();
         void first();
         std::tuple<std::vector<char>, std::vector<char>, uint32_t> next();
+        std::tuple<std::vector<char>, std::vector<char>, uint32_t> keyValue();
     };
 
 
