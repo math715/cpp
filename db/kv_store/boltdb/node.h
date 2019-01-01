@@ -42,6 +42,9 @@ namespace  boltdb {
         bool sizeLessThan(int v);
         std::pair<int, int> splitIndex(int threshold);
         void put(key_t &oldKey, key_t &newKey, key_t &value, pgid id, uint32_t flags);
+        int pageElementSize();
+
+        Status spill();
     };
 }
 

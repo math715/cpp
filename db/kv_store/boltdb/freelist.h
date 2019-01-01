@@ -23,6 +23,8 @@ namespace boltdb {
         void reindex();
         int count();
         void copyall(std::vector<pgid> &dst);
+        void free(txid tid, page *p);
+        pgid allocate(int n);
 
     };
 

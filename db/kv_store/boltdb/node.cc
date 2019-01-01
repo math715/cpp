@@ -165,7 +165,26 @@ namespace  boltdb {
             fillPercent = maxFillPercent;
         }
         auto threshold = int(pageSize * fillPercent);
-        splitIndex(threshold);
+        auto split_index = splitIndex(threshold);
+        if (parent == nullptr) {
+            parent = new node();
+            parent->bucket = this->bucket;
+
+        }
+        auto next = new node();
+        next->bucket = bucket;
+        next->isLeaf = isLeaf;
+        next->parent = parent;
+        parent->children.push_back(next);
+        for (int idx = split_index.first, i = 0; idx < inodes.size(); ++idx) {
+            next->inodes[i] = inodes[idx];
+        }
+        inodes.resize(split_index.first);
+
+        // Update the statistics.
+        bucket->tx->stats.Split++;
+
+        return std::make_pair(this, next);
 
 
 
@@ -183,12 +202,12 @@ namespace  boltdb {
        for (int i = 0; i < inodes.size() - minKeysPerPage; i++) {
            index = i;
            auto n = inodes[i];
-           auto elsize = n->pageElementSize() + n->key.size() + n->value.size();
+           auto elsize = pageElementSize() + n->key.size() + n->value.size();
 
            // If we have at least the minimum number of keys and adding another
            // node would put us over the threshold then exit and return.
            if (i >= minKeysPerPage && sz+elsize > threshold) {
-                       break
+                       break;
            }
 
            // Add the element size to the total size.
@@ -244,6 +263,32 @@ namespace  boltdb {
         n->value = value;
         n->pgid_ = id;
         assert(n->key.size() > 0);
+    }
+
+    Status node::spill() {
+
+        auto tx = bucket->tx;
+        if (spilled) {
+            return Status::Ok();
+        }
+
+        sort(children.begin(), children.end());
+        for (int i = 0; i < children.size(); ++i) {
+            Status status = children[i]->spill();
+            if (!status.ok()){
+                return status;
+            }
+        }
+
+        children.clear();
+
+        auto ns = split(tx->db_->pageSize);
+        for (int i= 0; i < ns.size(); ++i) {
+            if (ns[i]->pgid_ > 0) {
+                tx->db_->freelist_->free(tx->meta_->txid, tx->Page(pgid_));
+                node.pgid = 0
+            }
+        }
     }
 
 

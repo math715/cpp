@@ -108,4 +108,71 @@ namespace boltdb {
         sort(m.begin(), m.end());
         mergepgids(dst, ids_, m);
     }
+
+
+    void freelist::free(boltdb::txid tid, boltdb::page *p) {
+        if (p->id <= 1) {
+            assert(true);
+        }
+
+        auto ids = pending[tid];
+        for (auto id = p->id; id <= p->id + pgid(p->overflow); ++id) {
+            if (cache[id]) {
+                assert(true);
+            }
+            ids.push_back(id);
+            cache[id] = true;
+        }
+        pending[tid] = ids;
+    }
+
+
+    pgid freelist::allocate(int n) {
+        if (ids_.size() == 0) {
+            return 0;
+        }
+
+        pgid initial = 0, previd = 0;
+        for (int i = 0; i < ids_.size(); ++i ) {
+            pgid id = ids_[i];
+            if (id <= 1) {
+                assert(true);
+//                panic(fmt.Sprintf("invalid page allocation: %d", id))
+            }
+
+            // Reset initial page if this is not contiguous.
+            if (previd == 0 || id-previd != 1) {
+                initial = id;
+            }
+
+            // If we found a contiguous block then remove it and return it.
+            if ((id-initial)+1 == pgid(n)) {
+                // If we're allocating off the beginning then take the fast path
+                // and just adjust the existing slice. This will use extra memory
+                // temporarily but the append() in free() will realloc the slice
+                // as is necessary.
+                if ((i + 1) == n) {
+//                   ids_ = ids_[i+1:]
+                    ids_.erase(ids_.begin(), ids_.begin() + n);
+                } else {
+                    for (int idx = i - n + 1; idx + n < ids_.size(); ++idx){
+                        ids_[idx] = ids_[idx+n];
+                    }
+                    ids_.resize(ids_.size() - n);
+                }
+
+                // Remove from the free cache.
+                for ( pgid  i = pgid(0); i < pgid(n); i++ ){
+//                    delete(f.cache, initial+i)
+                    cache.erase(initial+i);
+                }
+
+                return initial;
+            }
+
+            previd = id;
+        }
+        return 0;
+    }
+
 }
