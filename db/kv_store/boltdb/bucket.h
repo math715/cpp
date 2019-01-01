@@ -45,6 +45,7 @@ namespace  boltdb {
         std::map<pgid, node *> nodes;
         double FillPercent;
         std::pair<page *, node *>  pageNode(pgid id);
+        node *Node(pgid id, node *parent);
     };
 
 

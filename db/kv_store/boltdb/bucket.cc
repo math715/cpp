@@ -2,8 +2,10 @@
 // Created by ruoshui on 12/19/18.
 //
 
+#include <cassert>
 #include "bucket.h"
 #include "Tx.h"
+#include "node.h"
 
 
 namespace boltdb {
@@ -31,5 +33,34 @@ namespace boltdb {
 
         // Finally lookup the page from the transaction if no node is materialized.
         return std::make_pair(tx->Page(id), nullptr);
+    }
+
+
+    node* Bucket::Node(boltdb::pgid id, boltdb::node *parent) {
+        assert(nodes.empty());
+        auto n = nodes[id];
+        if (n != nullptr) {
+            return n;
+        }
+        n = new node;
+        n->bucket = this;
+        n->parent = parent;
+        if (parent == nullptr) {
+            rootNode  = n;
+        } else {
+            parent->children.push_back(n);
+        }
+        auto p = page_;
+        if (p == nullptr) {
+            p = tx->Page(id);
+        }
+        n->read(p);
+        nodes[id] = n;
+        tx->stats.NodeCount++;
+        return n;
+
+
+
+
     }
 }

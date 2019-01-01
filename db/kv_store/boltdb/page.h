@@ -18,16 +18,26 @@ namespace boltdb {
         metaPageFlag = 0x04,
         freelistPageFlag = 0x10
     };
+    enum {
+        bucketLeafFlag = 0x01
+    };
+    enum {
+        minKeysPerPage = 2,
+    };
+
+
+
     struct branchPageElement  {
         uint32_t pos;
         uint32_t ksize;
         pgid  pgid_;
+        std::vector<char> key();
     };
     struct leafPageElement {
+        uint32_t flags;
         uint32_t pos;
         uint32_t ksize;
         uint32_t vsize;
-        pgid  pgid_;
         std::vector<char> key();
         std::vector<char> value();
     };
@@ -42,8 +52,13 @@ namespace boltdb {
 
         branchPageElement*       BranchPageElement(uint16_t index) ;
         leafPageElement * LeafPageElement(uint16_t index);
+        leafPageElement * LeafPageElements();
+        branchPageElement* BranchPageElements();
 
     };
+    const size_t  pageHeaderSize = (size_t) (&((page*)0)->ptr);
+    const size_t  branchPageElementSize = sizeof(branchPageElement);
+    const size_t  leafPageElementSize = sizeof(leafPageElement);
 }
 
 
