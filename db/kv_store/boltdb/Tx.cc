@@ -8,6 +8,7 @@
 #include "port.h"
 #include <algorithm>
 #include <cassert>
+#include "freelist.h"
 
 namespace  boltdb {
     void Tx::init(boltdb::DB *db) {
@@ -104,7 +105,7 @@ namespace  boltdb {
         for (auto p : pages) {
                 // Ignore page sizes over 1 page.
                 // These are allocated using make() instead of the page pool.
-                if (int(p.second->overflow) != 0 ){
+                if (int(p.second->overflow) != 0 ) {
                     continue;
                 }
                 char *buf = reinterpret_cast<char *>(p.second);
@@ -175,48 +176,51 @@ namespace  boltdb {
                 rollback();
                 return err
         }
-        tx.stats.SpillTime += time.Since(startTime)
+//        tx.stats.SpillTime += time.Since(startTime)
 
         // Free the old root bucket.
-        tx.meta.root.root = tx.root.root
+        meta_->root.root = root.root;
 
-        opgid := tx.meta.pgid
+        auto opgid = meta_->pgcnt;
 
         // Free the freelist and allocate new pages for it. This will overestimate
         // the size of the freelist but not underestimate the size (which would be bad).
-        tx.db.freelist.free(tx.meta.txid, tx.db.page(tx.meta.freelist))
-        p, err := tx.allocate((tx.db.freelist.size() / tx.db.pageSize) + 1)
-        if err != nil {
-                    tx.rollback()
-                    return err
-            }
-        if err := tx.db.freelist.write(p); err != nil {
-                tx.rollback()
-                return err
+        db_->freelist_->free(meta_->txid, db_->Page(meta_->freelist));
+        auto perr = allocate((db_->freelist_->size() / db_->pageSize) + 1)
+        if (!perr.second.ok())  {
+            rollback()
+            return err;
         }
-        tx.meta.freelist = p.id
+        auto err = db_->freelist_->write(perr.first);
+        if (!err.ok()) {
+                rollback()
+                return err;
+        }
+        meta_.freelist = perr.first->id;
 
         // If the high water mark has moved up then attempt to grow the database.
-        if tx.meta.pgid > opgid {
-                    if err := tx.db.grow(int(tx.meta.pgid+1) * tx.db.pageSize); err != nil {
-                        tx.rollback()
-                        return err
-                    }
+        if (meta_->pgcnt > opgid) {
+            auto err = db_->grow(int(meta_->pgcnt+1) * db_.pageSize);
+            if (!err.ok()) {
+                rollback();
+                return err;
             }
 
         // Write dirty pages to disk.
-        startTime = time.Now()
-        if err := tx.write(); err != nil {
-                tx.rollback()
-                return err
+//        startTime = time.Now()
+         err = write();
+        if (!err.ok()) {
+                rollback();
+                return err;
         }
-
+        //FIXME delete strict mode
         // If strict mode is enabled then perform a consistency check.
         // Only the first consistency error is reported in the panic.
-        if tx.db.StrictMode {
-            ch := tx.Check()
-            var errs []string
-            for {
+        /*
+        if (db_.StrictMode ) {
+            ch := Check();
+//            var errs []string
+            while (true) {
                 err, ok := <-ch
                 if !ok {
                             break
@@ -227,24 +231,95 @@ namespace  boltdb {
                 panic("check fail: " + strings.Join(errs, "\n"))
             }
         }
+         */
+        err = writeMeta();
 
         // Write meta to disk.
-        if err := tx.writeMeta(); err != nil {
-                tx.rollback()
-                return err
+        if (!err.ok()) {
+                rollback();
+                return err;
         }
-        tx.stats.WriteTime += time.Since(startTime)
+//        tx.stats.WriteTime += time.Since(startTime)
 
         // Finalize the transaction.
-        tx.close()
+        close();
 
         // Execute commit handlers now that the locks have been removed.
-        for _, fn := range tx.commitHandlers {
-            fn()
+        for ( auto &fn : commitHandlers) {
+            fn();
         }
 
-        return nil
+        return Status::Ok();
     }
 
+
+    void Tx::forEachPage(boltdb::pgid id, int depth, std::function<void(page *, int)> fn) {
+            auto p = Page(id);
+
+            // Execute function.
+            fn(p, depth);
+
+            // Recursively loop over children.
+            if ((p->flags & branchPageFlag) != 0 ){
+                for (int i = 0; i < int(p->count); i++ ) {
+                    auto elem = p->BranchPageElement(uint16_t(i));
+                    forEachPage(elem->pgid_, depth+1, fn);
+                }
+            }
+        }
+    }
+
+    void Tx::rollback() {
+        if (db_ == nullptr ){
+                    return;
+        }
+        if (writable) {
+            db_->freelist_->rollback(meta_->txid);
+            db_->freelist_->reload(db_->Page(db_->Meta()->freelist));
+        }
+        close();
+    }
+    Status Tx::Rollback() {
+        if (db_ == nullptr {
+            return Status::IOError("tx close");
+        }
+        rollback();
+        return Status::Ok();
+    }
+
+    }
+
+    void Tx::close() {
+        if (db_ == nullptr) {
+                    return;
+        }
+        if (writable) {
+            // Grab freelist stats.
+            auto  freelistFreeN = db_.freelist.free_count();
+            var freelistPendingN = tx.db.freelist.pending_count()
+            var freelistAlloc = tx.db.freelist.size()
+
+            // Remove transaction ref & writer lock.
+            tx.db.rwtx = nil
+            tx.db.rwlock.Unlock()
+
+            // Merge statistics.
+            tx.db.statlock.Lock()
+            tx.db.stats.FreePageN = freelistFreeN
+            tx.db.stats.PendingPageN = freelistPendingN
+            tx.db.stats.FreeAlloc = (freelistFreeN + freelistPendingN) * tx.db.pageSize
+            tx.db.stats.FreelistInuse = freelistAlloc
+            tx.db.stats.TxStats.add(&tx.stats)
+            tx.db.statlock.Unlock()
+        } else {
+            db_->removeTx(this);
+        }
+
+        // Clear all references.
+        db_ = nullptr;
+        meta_ = nullptr;
+        root = Bucket(this);
+        pages.clear();
+    }
 
 }
