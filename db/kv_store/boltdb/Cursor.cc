@@ -263,6 +263,7 @@ namespace boltdb {
             index --;
         }
         stack.back().index = index;
+
         search(key, inodes[index].pgid_);
 
     }
