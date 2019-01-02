@@ -33,6 +33,7 @@ namespace boltdb {
         uint64_t checksum;
         uint64_t sum64();
         Status Validate();
+        void write(page *p);
     };
 
 
@@ -48,9 +49,9 @@ namespace boltdb {
     const Options DefautlOptions;
     class Tx;
     class freelist;
-    class TxStats;
+    struct TxStats;
 
-    class Stats {
+    struct Stats {
         int FreePageN;
         int PendingPageN;
         int FreeAlloc;
@@ -67,6 +68,7 @@ namespace boltdb {
 
 
     };
+    class File;
     class DB {
         
     public:
@@ -78,7 +80,7 @@ namespace boltdb {
         int    MaxBatchSize;
         std::chrono::milliseconds MaxBatchDelay;
         int    AllocSize;
-        FILE   *file;
+        File   *file;
         char * dataref;
         char * data;
         int  datasz;
@@ -109,10 +111,13 @@ namespace boltdb {
             return result;
         }
         static Status open( std::string path, Options *ops, DB **pDB) ;
+
         Status init();
         page * pageInBuffer(char *buf, pgid id);
         page * Page(pgid id);
         meta * Meta();
+        std::pair<page *, Status> allocate(int count);
+        Status grow( int sz);
     private:
 
 

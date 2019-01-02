@@ -9,7 +9,7 @@
 
 namespace boltdb {
     using txid = uint64_t ;
-    class TxStats {
+    struct TxStats {
         int PageCount;
         int PageAlloc;
         int CursorCount;
@@ -29,6 +29,7 @@ namespace boltdb {
     };
     class DB;
     struct meta;
+    class Status;
     struct Tx {
         bool writable;
         bool managed;
@@ -40,6 +41,12 @@ namespace boltdb {
         int writeFlag;
         void init(DB *db);
         page *Page(pgid id);
+        std::pair<page *, Status> allocate(int count);
+        Status write();
+        Status writeMeta();
+        Status Commit();
+
+
     };
 }
 

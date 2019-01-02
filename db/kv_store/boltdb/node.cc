@@ -4,9 +4,11 @@
 
 #include <cassert>
 #include <cstring>
+#include <algorithm>
 #include "node.h"
 #include "page.h"
 #include "Tx.h"
+#include "freelist.h"
 
 
 namespace  boltdb {
@@ -59,13 +61,56 @@ namespace  boltdb {
         if (isLeaf) {
             assert(true);
         }
-        return bucket->no()
+        return bucket->Node(inodes[index]->pgid_, this);
     }
 
+    int node::childIndex(boltdb::node *child) {
+        auto it = std::lower_bound(inodes.begin(), inodes.end(), child->key);
+        auto index = it - inodes.begin();
+        return index;
+    }
+
+    void node::free() {
+        if (pgid_ != 0 ){
+            bucket->tx->db_->freelist_->free(bucket->tx->meta_->txid, bucket->tx->Page(pgid_));
+            pgid_ = 0;
+        }
+    }
+
+    void node::removeChild(boltdb::node *target) {
+        std::remove_if(children.begin(), children.end(), target);
+//        for i, child := range n.children {
+//            if child == target {
+//                        n.children = append(n.children[:i], n.children[i+1:]...)
+//                        return
+//                }
+//        }
+    }
+
+    node* node::nextSibling() {
+        if (parent == nullptr) {
+                    return nullptr;
+            }
+        auto index = parent->childIndex(this);
+        if (index >= parent->numChildren()-1) {
+            return nullptr;
+        }
+        return parent->childAt(index + 1);
+    }
+    node* node::prevSibling() {
+        if (parent == nullptr) {
+            return nullptr;
+        }
+        auto index = parent->childIndex(this);
+        if (index == 0) {
+            return nullptr;
+        }
+        return parent->childAt(index - 1);
+    }
 
     void node::read(boltdb::page *p) {
         pgid_ = p->id;
-        isLeaf = ((p.flags & leafPageFlag) != 0);
+        isLeaf = ((p->flags & leafPageFlag) != 0);
 //        n.inodes = make(inodes, int(p.count))
         inodes.resize(p->count);
         for (int i = 0; i < int(p->count); i++ ){
@@ -286,13 +331,181 @@ namespace  boltdb {
         for (int i= 0; i < ns.size(); ++i) {
             if (ns[i]->pgid_ > 0) {
                 tx->db_->freelist_->free(tx->meta_->txid, tx->Page(pgid_));
-                node.pgid = 0
+                ns[i]->pgid_= 0;
             }
+            auto page = tx->allocate(size()/tx->db_->pageSize + 1);
+            if (!page.second.ok()){
+                return page.second;
+            }
+            auto p = page.first;
+            if (page.first->id >= tx->meta_->pgcnt) {
+//                panic(fmt.Sprintf("pgid (%d) above high water mark (%d)", p.id, tx.meta.pgid))
+                assert(true);
+            }
+            pgid_ = p->id;
+            write(p);
+            spilled = true;
+
+            // Insert into parent inodes.
+            if (parent != nullptr){
+                auto k = key;
+                if (k.empty()) {
+                    k = inodes[0]->key;
+                }
+                std::vector<char> nil;
+                parent->put(k, inodes[0]->key, nil, pgid_, 0);
+                key = inodes[0]->key;
+                assert(!key.empty());
+            }
+            tx->stats.Spill++;
+
+        }
+        if (parent != nullptr && parent->pgid_== 0 ){
+            children.clear();
+            return parent->spill();
         }
     }
 
 
+    void node::rebalance() {
+        if (!unbalanced) {
+            return;
+        }
+        unbalanced = false;
+
+        // Update statistics.
+        bucket->tx->stats.Rebalance++;
+
+        // Ignore if node is above threshold (25%) and has enough keys.
+        auto threshold = bucket->tx->db_->pageSize / 4;
+        if (size() > threshold && inodes.size() > minKeys() ){
+            return;
+        }
+
+        // Root node has special handling.
+        if (parent == nullptr) {
+                    // If root node is a branch and only has one node then collapse it.
+            if (isLeaf && inodes.size() == 1 ){
+                // Move root's child up.
+                auto child = bucket->Node(inodes[0]->pgid_, this);
+                isLeaf = child->isLeaf;
+                inodes = child->inodes;
+                children = child->children;
+
+                // Reparent all child nodes being moved.
+                for ( auto &n : inodes) {
+                    if (bucket->nodes.find(n->pgid_) != bucket->nodes.end()) {
+                        child->parent = this;
+                    }
+//                            auto child = bucket->nodes[pgid_];
+//                            if child, ok := n.bucket.nodes[inode.pgid]; ok {
+//                                    child.parent = n
+//                            }
+                }
+
+                // Remove old child.
+                child->parent = nullptr;
+                bucket->nodes.erase(child->pgid_);
+            }
+
+            return;
+        }
+
+        // If node has no keys then just remove it.
+        if (numChildren() == 0 ) {
+            parent->del(key);
+            parent->removeChild(this);
+            bucket->nodes.erase(pgid_);
+            free();
+            parent->rebalance();
+            return;
+        }
+
+        assert(parent->numChildren() > 1);
+
+        // Destination node is right sibling if idx == 0, otherwise left sibling.
+        node * target;
+        bool  useNextSibling = (parent->childIndex(this) == 0);
+        if (useNextSibling) {
+            target = nextSibling();
+        } else {
+            target = prevSibling();
+        }
+
+        // If both this node and the target node are too small then merge them.
+        if (useNextSibling) {
+                // Reparent all child nodes being moved.
+            for (auto n : target->inodes ){
+                if (bucket->nodes.find(n->pgid_) != bucket->nodes.end()) {
+                    auto child = bucket->nodes[n->pgid_];
+                    child->parent->removeChild(child);
+                    child->parent = this;
+                    child->parent->children.push_back(child);
+                }
+            }
+
+            // Copy over inodes from target and remove target.
+            for (auto i : target->inodes) {
+                inodes.push_back(i);
+            }
+            parent->del(target->key);
+            parent->removeChild(target);
+            bucket->nodes.erase(target->pgid_);
+            target->free();
+        } else {
+            // Reparent all child nodes being moved.
+            for (auto n : target->inodes ){
+                if (bucket->nodes.find(n->pgid_) != bucket->nodes.end()) {
+                    auto child = bucket->nodes[n->pgid_];
+                    child->parent->removeChild(child);
+                    child->parent = target;
+                    child->parent->children.push_back(child);
+                }
+            }
+
+            // Copy over inodes to target and remove node.
+            for (auto i : inodes) {
+                target->inodes.push_back(i);
+            }
+            parent->del(key);
+            parent->removeChild(this);
+            bucket->nodes.erase(pgid_);
+            free();
+        }
+
+        // Either this node or the target node was deleted from the parent so rebalance it.
+        parent->rebalance();
+    }
 
 
+
+    void node::dereference() {
+        if (!key.empty()) {
+//            key_t k = key;
+//            key = k;
+//            assert(pgid_ == 0 || key.size() > 0);
+        }
+
+        for (int i = 0; i < inodes.size(); ++i) {
+//            auto inode = inodes[i];
+
+//            key := make([]byte, len(inode.key))
+//            copy(key, inode.key)
+//            inode.key = key;
+//            _assert(len(inode.key) > 0, "dereference: zero-length inode key")
+
+//            value := make([]byte, len(inode.value))
+//            copy(value, inode.value)
+//            inode.value = value
+        }
+
+        // Recursively dereference children.
+        for (auto  child :children) {
+            child->dereference();
+        }
+
+        // Update statistics.
+        bucket->tx->stats.NodeDeref++;
+    }
 
 }

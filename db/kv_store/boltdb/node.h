@@ -34,17 +34,27 @@ namespace  boltdb {
 
         int pageElementSize();
         node *childAt(int index);
+        int childIndex(node *child );
+        void free();
+        int numChildren(){
+            return inodes.size();
+        }
+        void removeChild(node * target);
+
+        node *nextSibling();
+        node *prevSibling();
         void read(page *p);
 
         void write(page *p);
         std::vector<node*> split(int pageSize);
         std::pair<node*, node*> splitTwo(int pageSize);
-        bool sizeLessThan(int v);
         std::pair<int, int> splitIndex(int threshold);
+        bool sizeLessThan(int v);
         void put(key_t &oldKey, key_t &newKey, key_t &value, pgid id, uint32_t flags);
-        int pageElementSize();
 
         Status spill();
+        void rebalance();
+        void dereference();
     };
 }
 

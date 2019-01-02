@@ -44,6 +44,7 @@ namespace boltdb {
         std::tuple<std::vector<char>, std::vector<char>, uint32_t> keyValue();
 
         Status Delete();
+        node *Node();
     };
 
 

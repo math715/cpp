@@ -166,7 +166,16 @@ namespace boltdb {
 
     std::tuple<std::vector<char>, std::vector<char>, uint32_t> Cursor::seek(std::vector<char> key) {
         stack.resize(0);
-        search(bucket->root);
+        search(key, bucket->root);
+        auto ref = stack.back();
+        if (ref.index >= ref.count()) {
+            std::vector<char> k, v;
+            return std::make_tuple(k, v, 0);
+        }
+
+        // If this is a bucket then return a nil value.
+        return keyValue();
+
     }
 
 
@@ -187,9 +196,7 @@ namespace boltdb {
             }
             auto elem = bucket->pageNode(id);
 
-            elemRef er;
-            er.page_ = elem.first;
-            er.node_ = elem.second;
+            elemRef er(elem.first, elem.second);
             er.index = er.count() - 1;
             stack.push_back(er);
         }
@@ -221,10 +228,10 @@ namespace boltdb {
 
         // If we have a node then search its inodes.
         if (n != nullptr) {
-                    auto it = std::lower_bound(n->inodes.begin(), n->inodes.end(), key);
-                    e.index = it - n->inodes.begin();
-                    return ;
-            }
+            auto it = std::lower_bound(n->inodes.begin(), n->inodes.end(), key);
+            e.index = it - n->inodes.begin();
+            return ;
+        }
 
         // If we have a page then search its leaf elements.
         //TODO b search
@@ -311,5 +318,30 @@ namespace boltdb {
         node().del(std::get<0>(kv));
 
         return Status::Ok();
+    }
+
+
+    node* Cursor::Node() {
+        assert(stack.size() > 0);
+//        , "accessing a node with a zero-length cursor stack")
+
+        // If the top of the stack is a leaf node then just return it.
+        auto ref = stack.back();
+        if (ref.node_ != nullptr && ref.isLeaf()) {
+            return ref.node_;
+        }
+
+        // Start from root and traverse down the hierarchy.
+        auto n = stack[0].node_;
+        if (n == nullptr) {
+            n = bucket->Node(stack[0].page_->id, nullptr);
+        }
+        for (auto  : stack) {
+            ref
+            assert(!n->isLeaf);
+            n = n->childAt(int(ref.index));
+        }
+        assert(n->isLeaf);
+        return n;
     }
 }

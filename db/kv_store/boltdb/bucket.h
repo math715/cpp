@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <string>
 #include <map>
+#include <vector>
+#include "error.h"
 
 namespace  boltdb {
     class Tx;
@@ -32,20 +34,28 @@ namespace  boltdb {
 
     const double DefaultFillPercent = 0.5;
 
-
+    struct Cursor;
     struct Bucket : public bucket  {
     public:
         Bucket(Tx *tx);
         Tx *tx;
 //        bucket bucket_;
 
-        std::map<std::string, Bucket*> buckets;
+        std::map<std::vector<char>, Bucket*> buckets;
         page *page_;
         node *rootNode;
         std::map<pgid, node *> nodes;
         double FillPercent;
         std::pair<page *, node *>  pageNode(pgid id);
         node *Node(pgid id, node *parent);
+        void rebalance();
+        Status spill();
+
+        bool inlineable();
+        int maxInlineBucketSize();
+        void free();
+        char * write();
+        Cursor *newCursor();
     };
 
 

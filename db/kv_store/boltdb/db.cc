@@ -37,10 +37,11 @@ namespace boltdb {
 
         }
 //        int fd = ::open(path.c_str(), flag|O_CREAT, 0666);
-        db->file = fopen(path.c_str(), "r+");
-        int fd = fileno(db->file);
-        if (fd == -1) {
-            Status status = Status::NotFound(path) ;
+        db->file = new File();
+        auto status = db->file->Open(path.c_str(),  flag|O_CREAT, 0666);
+//                fopen(path.c_str(), "r+");
+//        int fd = fileno(db->file);
+        if (!status.ok()) {
             return status;
         }
         struct stat sb;
@@ -96,25 +97,6 @@ namespace boltdb {
         page *p =  reinterpret_cast<page *>(&byte[pageSize * id]);
         return p;
     }
-
-//    page* DB::page(boltdb::pgid id) {
-//        auto pos = id * pageSize;
-//        return reinterpret_cast<page*>(&data[pos]);
-//    }
-//    meta * DB::meta() {
-//        meta *metaA = meta0;
-//        meta *metaB = meta1;
-//        if (meta1->txid > meta0->txid) {
-//            metaA = meta1;
-//            metaB = meta0;
-//        }
-//        if (metaA->Validate() )
-//            return metaA;
-//        if ( metaB->Validate()) {
-//            return metaB;
-//        }
-//        return nullptr;
-//    }
 
 
     Status DB::init() {
@@ -204,8 +186,98 @@ namespace boltdb {
          return stat;
     }
 
+    void meta::write(boltdb::page *p) {
+        if (root.root >= pgcnt) {
+//            panic(fmt.Sprintf("root bucket pgid (%d) above high water mark (%d)", m.root.root, m.pgid))
+            assert(true);
+        } else if (freelist >= pgcnt) {
+            assert(true);
+//            panic(fmt.Sprintf("freelist pgid (%d) above high water mark (%d)", m.freelist, m.pgid))
+        }
+
+        // Page id is either going to be 0 or 1 which we can determine by the transaction ID.
+        p->id = pgid(txid % 2);
+        p->flags |= metaPageFlag;
+
+        // Calculate the checksum.
+        checksum = sum64();
+
+        *(p->Meta()) = *this;
+    }
+
     uint64_t meta::sum64() {
         return FNV::FNV_64a(reinterpret_cast<char*>(this),sizeof (meta));
+    }
+
+    std::pair<page *, Status> DB::allocate(int count) {
+        char *buf;
+        if (count == 1) {
+            buf = new char[pageSize];
+        } else {
+            buf = new char[count*pageSize];
+        }
+        page *p = reinterpret_cast<page *>(buf);
+        p->overflow = uint32_t(count - 1);
+
+        // Use pages from the freelist if they are available.
+        p->id = freelist_->allocate(count);
+        if ( p->id != 0) {
+            return std::make_pair(p, Status::Ok());
+        }
+
+        // Resize mmap() if we're at the end.
+        p->id = rwtx->meta_->pgcnt;
+        auto minsz = int((p->id+pgid(count))+1) * pageSize;
+        if (minsz >= datasz) {
+            Status status = Mmap(minsz);;
+            if ( !status.ok()) {
+                    return std::make_pair(nullptr, status);
+            }
+        }
+
+        // Move the page id high water mark.
+        rwtx->meta_->pgcnt += pgid(count);
+
+        return std::make_pair(p, Status::Ok());
+    }
+
+    Status DB::grow(int sz) {
+        // Ignore if the new size is less than available file size.
+        if (sz <= filesz) {
+            return Status::Ok();
+        }
+
+        // If the data is smaller than the alloc size then only allocate what's needed.
+        // Once it goes over the allocation size then allocate in chunks.
+        if (datasz < AllocSize ){
+            sz = datasz;
+        } else {
+            sz += AllocSize;
+        }
+
+        // Truncate and fsync to ensure file size metadata is flushed.
+        // https://github.com/boltdb/bolt/issues/284
+        if (!NoGrowSync && !readOnly) {
+//            if runtime.GOOS != "windows" {
+//            if err := db.file.Truncate(int64(sz)); err != nil {
+//                    return fmt.Errorf("file resize error: %s", err)
+//            }
+            Status status = file->Truncate(sz);
+            if (!status.ok()){
+                return status;
+            }
+            status = file->Sync();
+            if (!status.ok()) {
+                return status;
+            }
+//            }
+//            if err := db.file.Sync(); err != nil {
+//                    return fmt.Errorf("file sync error: %s", err)
+//            }
+        }
+
+        filesz = sz;
+        return Status::Ok();
     }
 
 }
