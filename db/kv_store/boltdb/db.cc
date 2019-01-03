@@ -44,19 +44,22 @@ namespace boltdb {
         if (!status.ok()) {
             return status;
         }
-        struct stat sb;
-        if (fstat(fd, &sb) == -1) {
-            Status status = Status::NotFound(path);
-            return status;
-        }
-        if (sb.st_size == 0) {
+
+        int64_t sz = db->file->fileSize();
+//        struct stat sb;
+//        if (fstat(fd, &sb) == -1) {
+//            Status status = Status::NotFound(path);
+//            return status;
+//        }
+        if (sz == 0) {
             Status status = db->init();
             if (!status.ok()){
                 return status;
             }
         } else {
             char *buf = new char[0x1000];
-            size_t sz = read(fd, buf, 0x1000);
+//            size_t sz = read(fd, buf, 0x1000);
+            size_t sz = db->file->Read(buf, 1, 0x1000);
             if (sz == -1) {
                 Status status = Status::IOError(path);
                 return status;
@@ -131,18 +134,22 @@ namespace boltdb {
 
 
 
-        auto result = fwrite(buf, sizeof(char), 4 * pageSize, file);
+        auto result = file->Write(buf, sizeof(char), 4 * pageSize);
         if (result != 4 * pageSize) {
             Status status = Status::IOError("write file ");
             return status;
         }
-        int fd = fileno(file);
-        if (fdatasync(fd) != 0) {
-            Status status = Status::IOError("data sync file ");
-
+        Status status = file->Fdatasync();
+        if (!status.ok()){
             return status;
         }
-        Status status = Status::Ok();
+//        int fd = fileno(file);
+//        if (fdatasync(fd) != 0) {
+//            Status status = Status::IOError("data sync file ");
+//
+//            return status;
+//        }
+        status = Status::Ok();
         return status;
     }
 
@@ -280,5 +287,144 @@ namespace boltdb {
         return Status::Ok();
     }
 
+
+    void DB::removeTx(Tx *tx) {
+        db.mmaplock.RUnlock()
+
+        // Use the meta lock to restrict access to the DB object.
+        db.metalock.Lock()
+
+        // Remove the transaction.
+        for i, t := range db.txs {
+            if t == tx {
+                        last := len(db.txs) - 1
+                        db.txs[i] = db.txs[last]
+                        db.txs[last] = nil
+                        db.txs = db.txs[:last]
+                        break
+                }
+        }
+        n := len(db.txs)
+
+        // Unlock the meta pages.
+        db.metalock.Unlock()
+
+        // Merge statistics.
+        db.statlock.Lock()
+        db.stats.OpenTxN = n
+        db.stats.TxStats.add(&tx.stats)
+        db.statlock.Unlock()
+    }
+
+
+    Status DB::Update(std::function<Status(Tx *)> fn) {
+        t, err := db.Begin(true)
+        if err != nil {
+                    return err
+            }
+
+        // Make sure the transaction rolls back in the event of a panic.
+        defer func() {
+            if t.db != nil {
+                        t.rollback()
+                }
+        }()
+
+        // Mark as a managed tx so that the inner function cannot manually commit.
+        t.managed = true
+
+        // If an error is returned from the function then rollback and return error.
+        err = fn(t)
+        t.managed = false
+        if err != nil {
+                    _ = t.Rollback()
+                    return err
+            }
+
+        return t.Commit()
+    }
+
+
+    Status DB::Mmap(int minsz) {
+        mmaplock.Lock();
+        defer db.mmaplock.Unlock()
+
+        info, err := db.file.Stat()
+        if err != nil {
+                    return fmt.Errorf("mmap stat error: %s", err)
+            } else if int(info.Size()) < db.pageSize*2 {
+            return fmt.Errorf("file size too small")
+        }
+
+        // Ensure the size is at least the minimum size.
+        var size = int(info.Size())
+        if size < minsz {
+                    size = minsz
+            }
+        size, err = db.mmapSize(size)
+        if err != nil {
+                    return err
+            }
+
+        // Dereference all mmap references before unmapping.
+        if db.rwtx != nil {
+                    db.rwtx.root.dereference()
+            }
+
+        // Unmap existing data before continuing.
+        if err := db.munmap(); err != nil {
+                return err
+        }
+
+        // Memory-map the data file as a byte slice.
+        if err := mmap(db, size); err != nil {
+                return err
+        }
+
+        // Save references to the meta pages.
+        db.meta0 = db.page(0).meta()
+        db.meta1 = db.page(1).meta()
+
+        // Validate the meta pages. We only return an error if both meta pages fail
+        // validation, since meta0 failing validation means that it wasn't saved
+        // properly -- but we can recover using meta1. And vice-versa.
+        err0 := db.meta0.validate()
+        err1 := db.meta1.validate()
+        if err0 != nil && err1 != nil {
+                    return err0
+            }
+
+        return nil
+    }
+    Status DB::View(std::function<Status(Tx *)> fn) {
+        auto =  Begin(false);
+        if err != nil {
+                    return err
+            }
+
+        // Make sure the transaction rolls back in the event of a panic.
+        defer func() {
+            if t.db != nil {
+                        t.rollback()
+                }
+        }()
+
+        // Mark as a managed tx so that the inner function cannot manually rollback.
+        t.managed = true
+
+        // If an error is returned from the function then pass it through.
+        err = fn(t)
+        t.managed = false
+        if err != nil {
+                    _ = t.Rollback()
+                    return err
+            }
+
+        if err := t.Rollback(); err != nil {
+                return err
+        }
+
+        return nil
+    }
 }
 

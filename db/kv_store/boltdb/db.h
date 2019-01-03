@@ -102,7 +102,7 @@ namespace boltdb {
         std::mutex statlock;
         bool readOnly;
 
-        Status Mmap(int minsz) ;
+//        Status Mmap(int minsz) ;
         std::string Path( ) {
             return path;
         }
@@ -118,7 +118,18 @@ namespace boltdb {
         meta * Meta();
         std::pair<page *, Status> allocate(int count);
         Status grow( int sz);
+        void removeTx(Tx *tx);
+        Status Update(std::function<Status(Tx*)> fn);
+        Status View(std::function<Status(Tx*)> fn);
+
+        Status Mmap( int minsz);
+        Status Munmap();
+        std::pair<int, Status> MmapSize(int size);
+
     private:
+        std::pair<Tx *, Status> Begin(bool writeable);
+        std::pair<Tx *, Status> BeginTx() ;
+        std::pair<Tx *, Status> BeginRWTx();
 
 
     };

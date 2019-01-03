@@ -279,15 +279,15 @@ namespace  boltdb {
         }
         close();
     }
+
     Status Tx::Rollback() {
-        if (db_ == nullptr {
-            return Status::IOError("tx close");
+        if (db_ == nullptr) {
+            return Status::TxError("tx close");
         }
         rollback();
         return Status::Ok();
     }
 
-    }
 
     void Tx::close() {
         if (db_ == nullptr) {
@@ -295,24 +295,27 @@ namespace  boltdb {
         }
         if (writable) {
             // Grab freelist stats.
-            auto  freelistFreeN = db_.freelist.free_count();
-            var freelistPendingN = tx.db.freelist.pending_count()
-            var freelistAlloc = tx.db.freelist.size()
+            auto  freelistFreeN = db_->freelist_->free_count();
+            auto  freelistPendingN = db_->freelist_->pending_count();
+            auto freelistAlloc = db_->freelist_->size();
 
             // Remove transaction ref & writer lock.
-            tx.db.rwtx = nil
-            tx.db.rwlock.Unlock()
+            db_->rwtx = nullptr;
+            db_->rwlock.unlock();
 
             // Merge statistics.
-            tx.db.statlock.Lock()
-            tx.db.stats.FreePageN = freelistFreeN
+            db_-> statlock.lock();
+            // TODO
+            /*
+            db.stats.FreePageN = freelistFreeN
             tx.db.stats.PendingPageN = freelistPendingN
             tx.db.stats.FreeAlloc = (freelistFreeN + freelistPendingN) * tx.db.pageSize
             tx.db.stats.FreelistInuse = freelistAlloc
             tx.db.stats.TxStats.add(&tx.stats)
-            tx.db.statlock.Unlock()
+             */
+            db_-> statlock.unlock();;
         } else {
-            db_->removeTx(this);
+            db_->removeTx(nullptr);
         }
 
         // Clear all references.

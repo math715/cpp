@@ -53,4 +53,43 @@ namespace boltdb {
         }
         return Status::Ok();
     }
+    int64_t File::fileSize() {
+        struct stat sb;
+        if (fstat(fd, &sb) == -1) {
+            assert(true);
+//            Status status = Status::NotFound(path);
+//            return status;
+        }
+        return sb.st_size;
+    }
+
+    size_t File::Write(const void *buf, size_t sz, size_t nmemb) {
+        return fwrite(buf, sz, nmemb, file);
+    }
+
+    size_t File::Read(void *ptr, size_t size, size_t nmemb) {
+        return fread(ptr, size, nmemb, file);
+    }
+
+
+    char* PagePool::get() {
+        std::unique_lock<std::mutex> lock;
+        if (freelist_.empty()) {
+            freelist_.push_back( new char[pagesize]);
+        }
+        auto p = freelist_.back();
+        freelist_.pop_back();
+        return p;
+
+    }
+    void PagePool::put(char *p) {
+        std::unique_lock<std::mutex> lock;
+        freelist_.push_back(p);
+    }
+
+    PagePool::~PagePool() {
+        for (auto f : freelist_) {
+            delete [] f;
+        }
+    }
 }

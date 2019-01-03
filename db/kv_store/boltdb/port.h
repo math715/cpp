@@ -7,6 +7,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <mutex>
+#include <vector>
 
 
 namespace boltdb {
@@ -45,6 +47,9 @@ namespace boltdb {
         Status Sync();
         Status writeAt(const char *buf, int64_t sz, int64_t offset);
         Status Fdatasync();
+        int64_t fileSize();
+        size_t Write(const void *buf, size_t sz, size_t nmemb);
+        size_t Read(void *ptr, size_t size, size_t nmemb);
 
 
     private:
@@ -53,7 +58,24 @@ namespace boltdb {
         char *path;
 
     };
+    struct page;
+    class PagePool {
+    public:
+        explicit PagePool(int pz):pagesize(pz) {};
+        ~PagePool();
+        char * get();
+        void put(char *p);
 
+    private:
+        int pagesize;
+        std::mutex mtx;
+        std::vector<char *> freelist_;
+    };
+
+
+    struct Lock {
+
+    };
 
     
 } // blotdb

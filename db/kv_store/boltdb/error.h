@@ -23,9 +23,14 @@ namespace boltdb {
         static Status IOError(const std::string &msg, const std::string &msg2 = {} ) {
             return Status(kIOError, msg, msg2);
         }
+        static Status TxError(const std::string &msg, const std::string &msg2 = {}) {
+            return Status(kTxError, msg, msg2);
+        }
         bool ok() const {            return state_ == nullptr;        }
         bool IsNotFound() const {            return code() == kNotFound;  }
         bool IsCorruption() const { return code() == kCorruption;}
+        std::string ToString() const;
+
     private:
         const char * state_;
         enum Code {
@@ -34,13 +39,13 @@ namespace boltdb {
             kCorruption = 2,
             kNotSupported = 3,
             kInvalidArgument = 4,
-            kIOError = 5
+            kIOError = 5,
+            kTxError = 6
         };
         Code code() const {
         	return (state_ == nullptr)? kOK: static_cast<Code>(state_[4]);
         }
         Status(Code code, const std::string &msg, const std::string &msg2);
-        std::string ToString() const;
 
     };
 }

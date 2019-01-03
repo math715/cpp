@@ -12,4 +12,17 @@ add_executable(boltdb
         error.h
         port.h
         bucket.cc
-        bucket.h Tx.cc Tx.h page.cc page.h freelist.cc freelist.h Cursor.cc Cursor.h node.cc node.h port.cc main.cc)
+        bucket.h
+        Tx.cc
+        Tx.h
+        page.cc
+        page.h
+        freelist.cc
+        freelist.h
+        Cursor.cc
+        Cursor.h
+        node.cc
+        node.h
+        port.cc
+        main.cc)
+

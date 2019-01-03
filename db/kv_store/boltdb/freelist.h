@@ -25,6 +25,9 @@ namespace boltdb {
         void copyall(std::vector<pgid> &dst);
         void free(txid tid, page *p);
         pgid allocate(int n);
+        void rollback(txid tid);
+        void release(txid tid);
+        void reload(page *p);
 
     };
 

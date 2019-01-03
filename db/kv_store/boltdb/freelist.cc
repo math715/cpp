@@ -175,4 +175,62 @@ namespace boltdb {
         return 0;
     }
 
+    void freelist::rollback(txid tid) {
+        for ( auto id : pending[tid] ){
+            cache.erase(id);
+        }
+
+        // Remove pages from pending list.
+//        delete(f.pending, txid)
+        pending.erase(tid);
+    }
+
+    void freelist::release(boltdb::txid tid) {
+        std::vector<pgid> m ;
+        for ( auto ids : pending) {
+            if (ids.first <= tid) {
+                        // Move transaction's pending pages to the available freelist.
+                        // Don't remove from the cache since the page is still free.
+                        for (auto id : ids.second) {
+                            m.push_back(id);
+                        }
+                        pending.erase(ids.first);
+//                        delete(f.pending, tid)
+                }
+        }
+        sort(m.begin(), m.end());
+
+//        ids_ = merge(m);
+        std::vector<pgid> dst;
+        std::merge(m.begin(), m.end(), ids_.begin(), ids_.end(), std::back_inserter(dst));
+        ids_ = dst;
+    }
+
+    void freelist::reload(boltdb::page *p) {
+        read(p);
+
+        // Build a cache of only pending pages.
+        std::map<pgid, bool> pcache;
+        for ( auto pendingIDs : pending ) {
+            for ( auto pendingID : pendingIDs.second) {
+                    pcache[pendingID] = true;
+            }
+        }
+
+        // Check each page in the freelist and build a new available freelist
+        // with any pages not in the pending lists.
+//        var a []pgid
+        std::vector<pgid> a;
+        for ( auto id : ids_) {
+            if (pcache.find(id) != pcache.end()) {
+                a.push_back(id);
+            }
+        }
+        ids_ = a;
+
+        // Once the available list is rebuilt then rebuild the free cache so that
+        // it includes the available and pending free pages.
+        reindex();
+    }
+
 }
