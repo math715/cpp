@@ -76,6 +76,9 @@ namespace boltdb {
     struct Lock {
 
     };
+    struct RWLock {
+
+    };
 
     
 } // blotdb
