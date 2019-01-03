@@ -56,6 +56,7 @@ namespace  boltdb {
         void free();
         char * write();
         Cursor *newCursor();
+        void dereference();
     };
 
 

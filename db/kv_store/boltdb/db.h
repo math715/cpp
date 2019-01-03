@@ -7,6 +7,7 @@
 #include <mutex>
 #include "bucket.h"
 #include "error.h"
+#include "port.h"
 
 namespace boltdb {
     const uint64_t maxMmapStep = 1<<30;
@@ -19,6 +20,7 @@ namespace boltdb {
 //    const std::chrono::milliseconds DefaultMaxBatchDelay = 10;
     const int DefaultAllocSize = 16 * 1024 * 1024;
     const int defaultPageSize = 4 * 1024; // 4k
+    bool IgnoreNoSync = false;
     using pgid = uint64_t;
     class page;
     struct meta {
@@ -63,11 +65,11 @@ namespace boltdb {
 
     class DB;
     class Status;
-    class batch {
-        DB *db;
-
-
-    };
+//    class batch {
+//        DB *db;
+//
+//
+//    };
     class File;
     class DB {
         
@@ -82,7 +84,7 @@ namespace boltdb {
         int    AllocSize;
         File   *file;
         char * dataref;
-        char * data;
+        char (* data)[maxMapSize];
         int  datasz;
         int  filesz;
         meta * meta0;
@@ -94,12 +96,17 @@ namespace boltdb {
         freelist *freelist_;
         Stats stats;
 //        sync.Pool pagePool;
-        std::mutex batchMu;
-        batch      *batck;
-        std::mutex rwlock;
-        std::mutex metalock;
-        std::mutex mmaplock;
-        std::mutex statlock;
+//        std::mutex batchMu;
+//        batch      *batck;
+//        std::mutex rwlock;
+//        std::mutex metalock;
+//        std::mutex mmaplock;
+//        std::mutex statlock;
+        Mutex rwlock;
+        Mutex metalock;
+        RWMutex mmaplock;
+        RWMutex statlock;
+
         bool readOnly;
 
 //        Status Mmap(int minsz) ;
@@ -111,6 +118,7 @@ namespace boltdb {
             return result;
         }
         static Status open( std::string path, Options *ops, DB **pDB) ;
+        void close();
 
         Status init();
         page * pageInBuffer(char *buf, pgid id);

@@ -71,24 +71,30 @@ namespace boltdb {
             }
             db->pageSize = 0x1000;
         }
-
+        auto err = db->Mmap(ops->InitialMmapSize);
+        if (!err.ok()){
+            db->close();
+            delete db;
+//            db = nullptr;
+            return err;
+        }
 //        mmaplock.lock();
-        auto size = sb.st_size < pops->InitialMmapSize? pops->InitialMmapSize: sb.st_size;
+//        auto size = sb.st_size < pops->InitialMmapSize? pops->InitialMmapSize: sb.st_size;
 
-        for (uint32_t i = 15; i <= 30; ++i) {
-            if (size <= (1 << i)) {
-                size = 1 << i;
-                break;
-            }
-        }
-        db->dataref = reinterpret_cast<char *>(mmap(NULL, size, PROT_WRITE, MAP_PRIVATE, fd, 0));
-        if (db->dataref == MAP_FAILED) {
-            Status status = Status::IOError("mmap");
-            return status;
-        }
-        db->data = db->dataref;
-        db->meta0 = db->Page(0)->Meta();
-        db->meta1 = db->Page(1)->Meta();
+//        for (uint32_t i = 15; i <= 30; ++i) {
+//            if (size <= (1 << i)) {
+//                size = 1 << i;
+//                break;
+//            }
+//        }
+//        db->dataref = reinterpret_cast<char *>(mmap(NULL, size, PROT_WRITE, MAP_PRIVATE, fd, 0));
+//        if (db->dataref == MAP_FAILED) {
+//            Status status = Status::IOError("mmap");
+//            return status;
+//        }
+//        db->data = db->dataref;
+//        db->meta0 = db->Page(0)->Meta();
+//        db->meta1 = db->Page(1)->Meta();
 
 
         db->freelist_ = new freelist();
@@ -289,142 +295,200 @@ namespace boltdb {
 
 
     void DB::removeTx(Tx *tx) {
-        db.mmaplock.RUnlock()
+//        db.mmaplock.RUnlock()
+        mmaplock.RUnlock();
 
         // Use the meta lock to restrict access to the DB object.
-        db.metalock.Lock()
+        metalock.Lock();
 
         // Remove the transaction.
-        for i, t := range db.txs {
-            if t == tx {
-                        last := len(db.txs) - 1
-                        db.txs[i] = db.txs[last]
-                        db.txs[last] = nil
-                        db.txs = db.txs[:last]
-                        break
-                }
+        for (int i = 0; i < txs.size(); ++i) {
+            if (txs[i] == tx) {
+                auto last = txs.size() - 1;
+                txs[i] = txs[last];
+                txs.pop_back();
+//                        db.txs = db.txs[:last]
+                break;
+            }
         }
-        n := len(db.txs)
+//        n := len(db.txs)
+        int n = txs.size();
 
         // Unlock the meta pages.
-        db.metalock.Unlock()
+        metalock.Unlock();
 
         // Merge statistics.
-        db.statlock.Lock()
-        db.stats.OpenTxN = n
-        db.stats.TxStats.add(&tx.stats)
-        db.statlock.Unlock()
+        statlock.Lock();
+        stats.OpenTxN = n;
+//        stats.txStats.add(&tx->stats);
+        statlock.Unlock();
     }
 
 
     Status DB::Update(std::function<Status(Tx *)> fn) {
-        t, err := db.Begin(true)
-        if err != nil {
-                    return err
-            }
+        auto txerr = Begin(true);
+        auto t = txerr.first;
+        if (txerr.second.ok()) {
+            return txerr.second;
+        }
 
         // Make sure the transaction rolls back in the event of a panic.
-        defer func() {
-            if t.db != nil {
-                        t.rollback()
-                }
-        }()
-
+//        defer func() {
+//            if t.db != nil {
+//                        t.rollback()
+//                }
+//        }()
+        auto defer_func = [](Tx *t) {
+            if (t->db_ != nullptr) {
+                t->rollback();
+            }
+        };
         // Mark as a managed tx so that the inner function cannot manually commit.
-        t.managed = true
+        t->managed = true;
 
         // If an error is returned from the function then rollback and return error.
-        err = fn(t)
-        t.managed = false
-        if err != nil {
-                    _ = t.Rollback()
-                    return err
-            }
-
-        return t.Commit()
+        auto err = fn(t);
+        t->managed = false;
+        if (!err.ok()) {
+            t->Rollback();
+            defer_func(t);
+            return err;
+        }
+        defer_func(t);
+        return t->Commit();
     }
 
 
     Status DB::Mmap(int minsz) {
         mmaplock.Lock();
-        defer db.mmaplock.Unlock()
+//        defer db.mmaplock.Unlock()
 
-        info, err := db.file.Stat()
-        if err != nil {
-                    return fmt.Errorf("mmap stat error: %s", err)
-            } else if int(info.Size()) < db.pageSize*2 {
-            return fmt.Errorf("file size too small")
+//        info, err := db.file.Stat()
+        auto size = file->fileSize();
+        if (size < pageSize * 2){
+            return Status::IOError("file size too small");
         }
+//        if err != nil {
+//                    return fmt.Errorf("mmap stat error: %s", err)
+//            } else if int(info.Size()) < db.pageSize*2 {
+//            return fmt.Errorf("file size too small")
+//        }
 
         // Ensure the size is at least the minimum size.
-        var size = int(info.Size())
-        if size < minsz {
-                    size = minsz
-            }
-        size, err = db.mmapSize(size)
-        if err != nil {
-                    return err
-            }
+//        var size = int(info.Size())
+        if (size < minsz) {
+            size = minsz;
+        }
+        auto serr = MmapSize(size);
+        if (!serr.second.ok())  {
+            return serr.second;
+        }
 
         // Dereference all mmap references before unmapping.
-        if db.rwtx != nil {
-                    db.rwtx.root.dereference()
-            }
+        if (rwtx != nullptr) {
+            rwtx->root.dereference();
+        }
 
         // Unmap existing data before continuing.
-        if err := db.munmap(); err != nil {
-                return err
+        auto err = Munmap();
+        if (!err.ok()) {
+            return err;
         }
 
         // Memory-map the data file as a byte slice.
-        if err := mmap(db, size); err != nil {
-                return err
+        err = File::Mmap(this, file->fd(), size);
+        if (!err.ok()) {
+                return err;
         }
 
         // Save references to the meta pages.
-        db.meta0 = db.page(0).meta()
-        db.meta1 = db.page(1).meta()
+        meta0 = Page(0)->Meta();
+        meta1 = Page(1)->Meta();
 
         // Validate the meta pages. We only return an error if both meta pages fail
         // validation, since meta0 failing validation means that it wasn't saved
         // properly -- but we can recover using meta1. And vice-versa.
-        err0 := db.meta0.validate()
-        err1 := db.meta1.validate()
-        if err0 != nil && err1 != nil {
-                    return err0
-            }
-
-        return nil
-    }
-    Status DB::View(std::function<Status(Tx *)> fn) {
-        auto =  Begin(false);
-        if err != nil {
-                    return err
-            }
-
-        // Make sure the transaction rolls back in the event of a panic.
-        defer func() {
-            if t.db != nil {
-                        t.rollback()
-                }
-        }()
-
-        // Mark as a managed tx so that the inner function cannot manually rollback.
-        t.managed = true
-
-        // If an error is returned from the function then pass it through.
-        err = fn(t)
-        t.managed = false
-        if err != nil {
-                    _ = t.Rollback()
-                    return err
-            }
-
-        if err := t.Rollback(); err != nil {
-                return err
+        auto err0 = meta0->Validate();
+        auto err1 = meta1->Validate();
+        if (!err0.ok() || !err1.ok()) {
+                    return err0;
         }
 
-        return nil
+        return Status::Ok();
+    }
+
+    std::pair<int, Status> DB::MmapSize(int size) {
+        // Double the size from 32KB until 1GB.
+        for (uint32_t i = 15; i <= 30; i++ ) {
+            if (size <= 1<<i) {
+                return std::make_pair(1 << i, Status::Ok());
+            }
+        }
+
+        // Verify the requested size is not above the maximum allowed.
+        if (size > maxMapSize) {
+                    return std::make_pair(0, Status::IOError("mmap too large"));
+        }
+
+        // If larger than 1GB then grow by 1GB at a time.
+        auto sz = int64_t(size);
+        auto remainder = sz % int64_t (maxMapSize);
+        if (remainder > 0 ) {
+            sz += int64_t(maxMmapStep) - remainder;
+        }
+
+        // Ensure that the mmap size is a multiple of the page size.
+        // This should always be true since we're incrementing in MBs.
+        int pz = int64_t(pageSize);
+        if ((sz % pz) != 0) {
+            sz = ((sz / pz) + 1) * pz;
+        }
+
+        // If we've exceeded the max size then only grow up to the max size.
+        if ( sz > maxMapSize ){
+                    sz = maxMapSize;
+        }
+
+        return std::make_pair(int(sz), Status::Ok());
+    }
+    Status DB::View(std::function<Status(Tx *)> fn) {
+        auto tx_err=  Begin(false);
+        if (!tx_err.second.ok()) {
+            return tx_err.second;
+        }
+
+        // Make sure the transaction rolls back in the event of a panic.
+//        defer func() {
+//            if t.db != nil {
+//                        t.rollback()
+//                }
+//        }()
+        auto defer_func = [](Tx *t) {
+            if (t->db_ != nullptr) {
+                t->rollback();
+            }
+        };
+
+        // Mark as a managed tx so that the inner function cannot manually rollback.
+        auto t = tx_err.first;
+        t->managed = true;
+
+        // If an error is returned from the function then pass it through.
+        auto err = fn(t);
+        t->managed = false;
+        if (!err.ok()) {
+            t->Rollback();
+            defer_func(t);
+            return err;
+        }
+        err = t->Rollback();
+        if (!err.ok()) {
+            defer_func(t);
+             return err;
+        }
+
+        defer_func(t);
+        return err;
     }
 }
 

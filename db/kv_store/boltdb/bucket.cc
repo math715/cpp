@@ -70,8 +70,8 @@ namespace boltdb {
         for (auto n : nodes) {
             n.second->rebalance();
         }
-        for (auto child = buckets) {
-            child->rebalance();
+        for (auto child : buckets) {
+            child.second->rebalance();
         }
     }
 
@@ -129,6 +129,16 @@ namespace boltdb {
         c->bucket = this;
         return c;
     }
+
+    void Bucket::dereference() {
+        if (rootNode != nullptr) {
+                    rootNode->root()->dereference();
+        }
+
+        for ( auto child : buckets) {
+            child.second->dereference();
+        }
+    }
     char * Bucket::write() {
         auto  n = rootNode;
 //        var value = make([]byte, bucketHeaderSize+n.size());
@@ -149,7 +159,7 @@ namespace boltdb {
     Status Bucket::spill() {
         // Spill all child buckets first.
         for( auto &b :buckets ){
-            auto &name = b.first;
+            std::vector<char> name = b.first;
             auto &child = b.second;
             // If the child bucket is small enough and it has no child buckets then
             // write it inline into the parent bucket's page. Otherwise spill it
@@ -189,30 +199,36 @@ namespace boltdb {
 //                panic(fmt.Sprintf("misplaced bucket header: %x -> %x", []byte(name), k))
             }
             if (flags&bucketLeafFlag == 0) {
-                panic(fmt.Sprintf("unexpected bucket header flag: %x", flags));
+//                panic(fmt.Sprintf("unexpected bucket header flag: %x", flags));
                 assert(true);
             }
-            c->Node().
+            //FIXME
+//            c->Node()->put(name, name, v, 0, bucketLeafFlag);
+
+            std::vector<char> v;
+            c->Node()->put(name, name, v, 0, bucketLeafFlag);
 //            c.node().put([]byte(name), []byte(name), value, 0, bucketLeafFlag)
         }
 
         // Ignore if there's not a materialized root node.
-        if b.rootNode == nil {
-                    return nil
-            }
+        if (rootNode == nullptr) {
+            return Status::Ok();
+        }
 
         // Spill nodes.
-        if err := b.rootNode.spill(); err != nil {
-                return err
+        auto err = rootNode->spill();
+        if (!err.ok()) {
+            return err;
         }
-        b.rootNode = b.rootNode.root()
+        rootNode = rootNode->root();
 
         // Update the root node for this bucket.
-        if b.rootNode.pgid >= b.tx.meta.pgid {
-            panic(fmt.Sprintf("pgid (%d) above high water mark (%d)", b.rootNode.pgid, b.tx.meta.pgid))
+        if (rootNode->pgid_ >= tx->meta_->pgcnt) {
+            assert(true);
+//            panic(fmt.Sprintf("pgid (%d) above high water mark (%d)", b.rootNode.pgid, b.tx.meta.pgid))
         }
-        b.root = b.rootNode.pgid
+        root = rootNode->pgid_;
 
-        return nil
+        return Status::Ok();
     }
 }

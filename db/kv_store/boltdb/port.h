@@ -9,10 +9,13 @@
 #include <fcntl.h>
 #include <mutex>
 #include <vector>
+#include <cassert>
 
 
 namespace boltdb {
     const uint32_t maxAllocSize = 0xFFFFFFF;
+    const int maxMapSize = 0x7FFFFFFF; // 2GB
+
     class Status;
     class SysCall {
         public:
@@ -38,10 +41,11 @@ namespace boltdb {
             return hash;
         }
     };
+    class DB;
     class  File {
 
     public:
-        File ():file(nullptr),path(nullptr),fd(-1){}
+        File ():file(nullptr),path(nullptr),fd_(-1){}
         Status Open(const char *path, int flags, mode_t mode);
         Status Truncate(uint64_t sz);
         Status Sync();
@@ -50,11 +54,15 @@ namespace boltdb {
         int64_t fileSize();
         size_t Write(const void *buf, size_t sz, size_t nmemb);
         size_t Read(void *ptr, size_t size, size_t nmemb);
-
+        int fd() {
+            assert(fd_ != -1);
+            return fd_;
+        }
+        static Status Mmap(boltdb::DB *db, int fd, int sz);
 
     private:
         FILE *file;
-        int fd;
+        int fd_;
         char *path;
 
     };
@@ -73,10 +81,28 @@ namespace boltdb {
     };
 
 
-    struct Lock {
+    class Mutex {
+    public:
+        Mutex();
+        ~Mutex();
+        void Lock();
+        void Unlock();
+
+    private:
+        pthread_mutex_t mtx;
 
     };
-    struct RWLock {
+    class RWMutex {
+    public:
+        RWMutex();
+        ~RWMutex();
+        void RLock();
+        void RUnlock();
+        void Lock();
+        void Unlock();
+
+    private:
+        pthread_rwlock_t rwlock;
 
     };
 
