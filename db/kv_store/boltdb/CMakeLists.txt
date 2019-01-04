@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 project(boltdb)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_COMPILER  g++-7)
 
 include_directories(.)
 
@@ -19,10 +20,13 @@ add_executable(boltdb
         page.h
         freelist.cc
         freelist.h
-        Cursor.cc
-        Cursor.h
+        cursor.cc
+        cursor.h
         node.cc
         node.h
         port.cc
-        main.cc)
+        main.cc
+        config.h)
+
+target_link_libraries(boltdb pthread)
 

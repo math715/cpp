@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include "config.h"
 
 namespace boltdb {
     using pgid = uint64_t ;
@@ -31,15 +32,15 @@ namespace boltdb {
         uint32_t pos;
         uint32_t ksize;
         pgid  pgid_;
-        std::vector<char> key();
+        boltdb_key_t key();
     };
     struct leafPageElement {
         uint32_t flags;
         uint32_t pos;
         uint32_t ksize;
         uint32_t vsize;
-        std::vector<char> key();
-        std::vector<char> value();
+        boltdb_key_t key();
+        boltdb_key_t value();
     };
     struct page {
         std::string typ();

@@ -5,18 +5,20 @@
 #include "port.h"
 #include "error.h"
 #include "db.h"
+#include "node.h"
 #include <unistd.h>
 #include <cassert>
 #include <sys/mman.h>
 #include <sys/file.h>
+#include <algorithm>
 
 namespace boltdb {
     Status File::Open(const char *path, int flags, mode_t mode) {
-        int fd = open(path, flags, mode);
-        if (fd == -1) {
+        fd_ = open(path, flags, mode);
+        if (fd_ == -1) {
             return Status::IOError(path);
         }
-        file = fdopen(fd, "w+");
+        file = fdopen(fd_, "w+");
         if (file == nullptr) {
             return Status::IOError(path);
         }
@@ -162,5 +164,13 @@ namespace boltdb {
 
     void RWMutex::Lock() {
         pthread_rwlock_wrlock(&rwlock);
+    }
+
+    int Sort::Search(std::vector<boltdb::inode *> &inodes, boltdb_key_t &key) {
+        auto it = std::lower_bound(inodes.begin(), inodes.end(), key, [](inode *n, const boltdb_key_t &key)->bool {
+            return n->key.compare(key) < 0;
+        });
+        int index = it - inodes.begin();
+        return index;
     }
 }

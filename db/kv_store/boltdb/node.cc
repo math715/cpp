@@ -12,9 +12,11 @@
 
 
 namespace  boltdb {
-    void node::del(std::vector<char> &key) {
+    void node::del(boltdb_key_t &key) {
         // Find index of key.
-        auto it =  std::lower_bound(inodes.begin(), inodes.end(), key);
+        auto it =  std::lower_bound(inodes.begin(), inodes.end(), key, [](inode *n, const boltdb_key_t &key)->bool{
+            return n->key.compare(key) < 0;
+        });
 
         // Exit if the key isn't found.
         if (it == inodes.end()  || (*it)->key != key) {
@@ -65,7 +67,9 @@ namespace  boltdb {
     }
 
     int node::childIndex(boltdb::node *child) {
-        auto it = std::lower_bound(inodes.begin(), inodes.end(), child->key);
+        auto it = std::lower_bound(inodes.begin(), inodes.end(), child->key, [](inode *n, boltdb_key_t key){
+            return n->key.compare(key) < 0;
+        });
         auto index = it - inodes.begin();
         return index;
     }
@@ -78,13 +82,16 @@ namespace  boltdb {
     }
 
     void node::removeChild(boltdb::node *target) {
-        std::remove_if(children.begin(), children.end(), target);
-//        for i, child := range n.children {
-//            if child == target {
+//        std::remove_if(children.begin(), children.end(), target , [](node *a, node *t){
+//
+//        });
+//        for (auto child : children) {
+//            if (child == target ){
 //                        n.children = append(n.children[:i], n.children[i+1:]...)
-//                        return
-//                }
+//                                return;
+//            }
 //        }
+        children.erase(std::remove(children.begin(), children.end(), target), children.end());
     }
 
     node* node::nextSibling() {
@@ -276,7 +283,8 @@ namespace  boltdb {
     }
 
 
-    void node::put(boltdb::key_t &oldKey, boltdb::key_t &newKey, boltdb::key_t &value, boltdb::pgid id,
+    void node::put(boltdb::boltdb_key_t &oldKey, boltdb::boltdb_key_t &newKey, const boltdb_key_t &value,
+                   boltdb::pgid id,
                    uint32_t flags) {
         if (id >= bucket->tx->meta_->pgcnt) {
 //            panic(fmt.Sprintf("pgid (%d) above high water mark (%d)", pgid, n.bucket.tx.meta.pgid))
@@ -291,8 +299,9 @@ namespace  boltdb {
 
         // Find insertion index.
 //        index := sort.Search(len(n.inodes), func(i int) bool { return bytes.Compare(n.inodes[i].key, oldKey) != -1 })
-        auto it = std::lower_bound(inodes.begin(), inodes.end(), oldKey);
-        int index = it - inodes.begin();
+//        auto it = std::lower_bound(inodes.begin(), inodes.end(), oldKey);
+//        int index = it - inodes.begin();
+        int index = Sort::Search(inodes, oldKey);
         // Add capacity and shift nodes if we don't have an exact match and need to insert.
         bool exact = inodes.size() > 0 && index < inodes.size() && (inodes[index]->key == oldKey);
         if (!exact) {
@@ -352,7 +361,6 @@ namespace  boltdb {
                 if (k.empty()) {
                     k = inodes[0]->key;
                 }
-                std::vector<char> nil;
                 parent->put(k, inodes[0]->key, nil, pgid_, 0);
                 key = inodes[0]->key;
                 assert(!key.empty());

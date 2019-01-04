@@ -189,25 +189,26 @@ namespace  boltdb {
         // Free the freelist and allocate new pages for it. This will overestimate
         // the size of the freelist but not underestimate the size (which would be bad).
         db_->freelist_->free(meta_->txid, db_->Page(meta_->freelist));
-        auto perr = allocate((db_->freelist_->size() / db_->pageSize) + 1)
+        auto perr = allocate((db_->freelist_->size() / db_->pageSize) + 1);
         if (!perr.second.ok())  {
-            rollback()
-            return err;
+            rollback();
+            return perr.second;
         }
-        auto err = db_->freelist_->write(perr.first);
+        err = db_->freelist_->write(perr.first);
         if (!err.ok()) {
-                rollback()
+                rollback();
                 return err;
         }
-        meta_.freelist = perr.first->id;
+        meta_->freelist = perr.first->id;
 
         // If the high water mark has moved up then attempt to grow the database.
         if (meta_->pgcnt > opgid) {
-            auto err = db_->grow(int(meta_->pgcnt+1) * db_.pageSize);
+            auto err = db_->grow(int(meta_->pgcnt + 1) * db_->pageSize);
             if (!err.ok()) {
                 rollback();
                 return err;
             }
+        }
 
         // Write dirty pages to disk.
 //        startTime = time.Now()
@@ -256,7 +257,7 @@ namespace  boltdb {
     }
 
 
-    void Tx::forEachPage(boltdb::pgid id, int depth, std::function<void(page *, int)> fn) {
+    void Tx::forEachPage(boltdb::pgid id, int depth, std::function<void(page *, int)> fn){
             auto p = Page(id);
 
             // Execute function.
@@ -269,7 +270,6 @@ namespace  boltdb {
                     forEachPage(elem->pgid_, depth+1, fn);
                 }
             }
-        }
     }
 
     void Tx::rollback() {
@@ -304,10 +304,10 @@ namespace  boltdb {
 
             // Remove transaction ref & writer lock.
             db_->rwtx = nullptr;
-            db_->rwlock.unlock();
+            db_->rwlock.Unlock();
 
             // Merge statistics.
-            db_-> statlock.lock();
+            db_-> statlock.Lock();
             // TODO
             /*
             db.stats.FreePageN = freelistFreeN
@@ -316,7 +316,7 @@ namespace  boltdb {
             tx.db.stats.FreelistInuse = freelistAlloc
             tx.db.stats.TxStats.add(&tx.stats)
              */
-            db_-> statlock.unlock();;
+            db_-> statlock.Unlock();;
         } else {
             db_->removeTx(nullptr);
         }

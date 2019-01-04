@@ -21,7 +21,6 @@ namespace boltdb {
 //    const std::chrono::milliseconds DefaultMaxBatchDelay = 10;
     const int DefaultAllocSize = 16 * 1024 * 1024;
     const int defaultPageSize = 4 * 1024; // 4k
-    bool IgnoreNoSync = false;
     using pgid = uint64_t;
     class page;
     struct meta {
@@ -140,7 +139,6 @@ namespace boltdb {
         std::pair<Tx *, Status> Begin(bool writeable);
         std::pair<Tx *, Status> BeginTx() ;
         std::pair<Tx *, Status> BeginRWTx();
-
 
     };
 }

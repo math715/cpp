@@ -3,14 +3,14 @@
 //
 
 #include <cassert>
-#include "Cursor.h"
+#include "cursor.h"
 #include "bucket.h"
 #include "Tx.h"
 #include "node.h"
 #include "page.h"
 
 namespace boltdb {
-    std::pair<std::vector<char>, std::vector<char>> Cursor::First() {
+    std::pair<boltdb_key_t, boltdb_key_t> cursor::First() {
         assert(bucket->tx->db_ == nullptr);
         stack.clear();
         auto elem = bucket->pageNode(bucket->root);
@@ -22,7 +22,7 @@ namespace boltdb {
         }
 
         auto kv = keyValue();
-        std::vector<char> v;
+        boltdb_key_t v;
         if ( (std::get<2>(kv) & uint32_t(bucketLeafFlag)) != 0 ) {
             return std::make_pair(std::get<0>(kv), v);
         }
@@ -30,7 +30,7 @@ namespace boltdb {
     }
 
 
-    std::pair<std::vector<char>, std::vector<char>> Cursor::Last() {
+    std::pair<boltdb_key_t, boltdb_key_t> cursor::Last() {
         assert(bucket->tx->db_ != nullptr);
         stack.clear();
         auto elem = bucket->pageNode(bucket->root);
@@ -39,24 +39,23 @@ namespace boltdb {
         stack.push_back(er);
         last();
         auto kv  = keyValue();
-        std::vector<char> v;
-
+        boltdb_key_t v;
         if ((std::get<2>(kv)  & uint32_t(bucketLeafFlag)) != 0) {
             return std::make_pair(std::get<0>(kv), v);
         }
         return std::make_pair(std::get<0>(kv), std::get<1>(kv));
     }
 
-    std::pair<std::vector<char>, std::vector<char>> Cursor::Next() {
+    std::pair<boltdb_key_t, boltdb_key_t> cursor::Next() {
         auto kv = next();
-        std::vector<char> v;
+        boltdb_key_t v;
         if ((std::get<2>(kv) & uint32_t(bucketLeafFlag)) != 0 ) {
             return std::make_pair(std::get<0>(kv), v);
         }
         return std::make_pair(std::get<0>(kv), std::get<1>(kv));
     }
 
-    std::pair<std::vector<char>, std::vector<char>> Cursor::Prev() {
+    std::pair<boltdb_key_t, boltdb_key_t> cursor::Prev() {
         assert(bucket->tx->db_ != nullptr);
 
         // Attempt to move back one element until we're successful.
@@ -69,26 +68,36 @@ namespace boltdb {
             }
             stack.resize(i);
         }
-        std::vector<char> k;
+        boltdb_key_t k, v;
         // If we've hit the end then return nil.
         if (stack.size() == 0) {
-            return std::make_pair(k, k);
+            return std::make_pair(k, v);
         }
 
         // Move down the stack to find the last element of the last leaf under this branch.
         last();
         auto kv= keyValue();
-        std::vector<char> nil;
+//        std::vector<char> nil;
         if ((std::get<2>(kv) & uint32_t(bucketLeafFlag)) != 0) {
-            return std::make_pair(std::get<0>(kv), nil);
+            return std::make_pair(std::get<0>(kv), v);
         }
         return std::make_pair(std::get<0>(kv), std::get<1>(kv));
     }
 
 
 
-    std::pair<std::vector<char>, std::vector<char>> Cursor::Seek(std::vector<char> key) {
+    std::pair<boltdb_key_t, boltdb_key_t> cursor::Seek(boltdb_key_t &key) {
         auto kv = seek(key);
+        auto ref = stack.back();
+        if (ref.index >= ref.count()) {
+            kv  = next();
+        }
+        if (std::get<0>(kv).empty()) {
+            return std::make_pair(nil, nil);
+        } else if ((std::get<2>(kv) & uint32_t(bucketLeafFlag)) != 0 ){
+            return std::make_pair(std::get<0>(kv), nil);
+        }
+        return std::make_pair(std::get<0>(kv), std::get<1>(kv));
     }
 
     bool elemRef::isLeaf() {
@@ -106,7 +115,7 @@ namespace boltdb {
             return int(page_->count);
     }
 
-    void Cursor::first() {
+    void cursor::first() {
             while (true) {
                     // Exit when we hit a leaf page.
 
@@ -123,11 +132,11 @@ namespace boltdb {
                             id = ref.page_->BranchPageElement(uint16_t(ref.index))->pgid_;
                     }
                     auto pn= bucket->pageNode(id);
-                    stack.push_back(elemRef{pn.first, pn.second, index: 0});
+                    stack.push_back(elemRef(pn.first, pn.second, 0));
             }
     }
 
-    std::tuple<std::vector<char>, std::vector<char>, uint32_t> Cursor::next() {
+    std::tuple<boltdb_key_t, boltdb_key_t, uint32_t> cursor::next() {
             while(true) {
                     // Attempt to move over one element until we're successful.
                     // Move up the stack as we hit the end of each page in our stack.
@@ -143,8 +152,8 @@ namespace boltdb {
                     // If we've hit the root page then stop and return. This will leave the
                     // cursor on the last element of the last page.
                     if (i == -1) {
-                            std::vector<char> key, value;
-                            return std::make_tuple(key, value, 0);
+//                            std::vector<char> key, value;
+                            return std::make_tuple(nil, nil, 0);
                     }
 
                     // Otherwise start from where we left off in the stack and find the
@@ -164,13 +173,13 @@ namespace boltdb {
 
     }
 
-    std::tuple<std::vector<char>, std::vector<char>, uint32_t> Cursor::seek(std::vector<char> key) {
+    std::tuple<boltdb_key_t, boltdb_key_t, uint32_t> cursor::seek(boltdb_key_t &key) {
         stack.resize(0);
         search(key, bucket->root);
         auto ref = stack.back();
         if (ref.index >= ref.count()) {
-            std::vector<char> k, v;
-            return std::make_tuple(k, v, 0);
+//            std::vector<char> k, v;
+            return std::make_tuple(nil, nil, 0);
         }
 
         // If this is a bucket then return a nil value.
@@ -179,7 +188,7 @@ namespace boltdb {
     }
 
 
-    void Cursor::last() {
+    void cursor::last() {
         while (true) {
             // Exit when we hit a leaf page.
             auto &ref = stack[stack.size()-1];
@@ -202,7 +211,7 @@ namespace boltdb {
         }
     }
 
-    void Cursor::search(std::vector<char> key, boltdb::pgid id) {
+    void cursor::search(boltdb_key_t key, boltdb::pgid id) {
         auto elem = bucket->pageNode(id);
         if (elem.first != nullptr && (elem.first->flags &(branchPageFlag|leafPageFlag) == 0)) {
             assert(true);
@@ -221,15 +230,20 @@ namespace boltdb {
 
     }
 
-    void Cursor::nsearch(std::vector<char> key) {
+    void cursor::nsearch(boltdb_key_t key) {
         auto &e = stack[stack.size()-1];
         auto p = e.page_;
         auto n = e.node_;
 
         // If we have a node then search its inodes.
         if (n != nullptr) {
-            auto it = std::lower_bound(n->inodes.begin(), n->inodes.end(), key);
-            e.index = it - n->inodes.begin();
+//            auto it = std::lower_bound(n->inodes.begin(), n->inodes.end(), [](std::vector<char> &key, inode *n)->int {
+//                return key < n->key;
+//            });
+//            e.index = it - n->inodes.begin();
+
+//            return ;
+            e.index = Sort::Search(n->inodes, key);
             return ;
         }
 
@@ -248,7 +262,7 @@ namespace boltdb {
     }
 
 
-    void Cursor::searchPage(std::vector<char> key, boltdb::page *p) {
+    void cursor::searchPage(boltdb_key_t &key, boltdb::page *p) {
         auto inodes = p->BranchPageElements();
         bool exact = false;
         int index = p->count;
@@ -268,7 +282,7 @@ namespace boltdb {
 
     }
 
-    void Cursor::searchNode(std::vector<char> key, boltdb::node *n) {
+    void cursor::searchNode(boltdb_key_t &key, boltdb::node *n) {
         bool exact = false;
         int index = n->inodes.size();
         for (int i = 0; i < n->inodes.size(); ++i) {
@@ -286,8 +300,8 @@ namespace boltdb {
 
     }
 
-    std::tuple<std::vector<char>, std::vector<char>, uint32_t> Cursor::keyValue() {
-            std::vector<char> key, value;
+    std::tuple<boltdb_key_t, boltdb_key_t, uint32_t> cursor::keyValue() {
+        boltdb_key_t key, value;
         auto &ref = stack[stack.size()-1];
         if (ref.count() == 0 || ref.index >= ref.count()) {
             return std::make_tuple(key, value, 0);
@@ -296,7 +310,7 @@ namespace boltdb {
 // Retrieve value from node.
         if (ref.node_ != nullptr) {
             auto inode = ref.node_->inodes[ref.index];
-            return std::make_tuple(inode->key, inode->key, inode->flags);
+            return std::make_tuple(inode->key, inode->value, inode->flags);
         }
 
 // Or retrieve value from page.
@@ -304,7 +318,7 @@ namespace boltdb {
         return std::make_tuple(elem->key(), elem->value(), elem->flags);
     }
 
-    Status Cursor::Delete() {
+    Status cursor::Delete() {
         if (bucket->tx->db_ == nullptr) {
             return Status::Corruption("ex closed");
         } else if (!bucket->tx->writable) {
@@ -322,7 +336,7 @@ namespace boltdb {
     }
 
 
-    node* Cursor::Node() {
+    node* cursor::Node() {
         assert(stack.size() > 0);
 //        , "accessing a node with a zero-length cursor stack")
 

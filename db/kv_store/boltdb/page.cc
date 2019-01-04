@@ -3,41 +3,39 @@
 //
 
 #include "page.h"
+#include "config.h"
 
 
 namespace boltdb {
     meta * page::Meta() {
-        return reinterpret_cast<meta*> (ptr);
+        return reinterpret_cast<meta*> (&ptr);
     }
 
 
-    std::vector<char> branchPageElement::key() {
+    boltdb_key_t branchPageElement::key() {
         char *buf = reinterpret_cast<char*>(&(this->pos));
         buf = buf + pos;
-        std::vector<char> key;
-        for (int i =0; i < ksize; ++i) {
-            key.push_back(buf[i]);
-        }
+        boltdb_key_t key(buf, ksize);
         return key;
     }
 
-    std::vector<char> leafPageElement::key() {
+    boltdb_key_t leafPageElement::key() {
         char *buf = reinterpret_cast<char*>(&(this->pos));
         buf = buf + pos;
-        std::vector<char> key;
-        for (int i =0; i < ksize; ++i) {
-            key.push_back(buf[i]);
-        }
+        boltdb_key_t key(buf, ksize);
+//        for (int i =0; i < ksize; ++i) {
+//            key.push_back(buf[i]);
+//        }
         return key;
     }
 
-    std::vector<char> leafPageElement::value() {
+    boltdb_key_t leafPageElement::value() {
         char *buf = reinterpret_cast<char *>(this);
         buf = buf + pos + ksize;
-        std::vector<char> value;
-        for (int i =0; i < vsize; ++i) {
-            value.push_back(buf[i]);
-        }
+        boltdb_key_t value(buf, vsize);
+//        for (int i =0; i < vsize; ++i) {
+//            value.push_back(buf[i]);
+//        }
         return value;
 
     }

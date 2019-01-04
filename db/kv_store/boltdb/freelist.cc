@@ -233,4 +233,23 @@ namespace boltdb {
         reindex();
     }
 
+
+    int freelist::size() {
+        int n = count();
+        if (n >= 0XFFFF) {
+            n++;
+        }
+        return pageHeaderSize + (int(sizeof(pgid)) * n);
+    }
+
+    int freelist::free_count() {
+        return ids_.size();
+    }
+    int freelist::pending_count() {
+        int  count = 0;
+        for (auto ls : pending) {
+            count += ls.second.size();
+        }
+        return count;
+    }
 }

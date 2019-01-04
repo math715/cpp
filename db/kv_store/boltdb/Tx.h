@@ -41,7 +41,7 @@ namespace boltdb {
         std::map<pgid, page*> pages;
         TxStats stats;
         int writeFlag;
-        std::vector<std::function<void>> commitHandlers;
+        std::vector<std::function<void()>> commitHandlers;
         void init(DB *db);
         page *Page(pgid id);
         std::pair<page *, Status> allocate(int count);
@@ -55,7 +55,8 @@ namespace boltdb {
 
 
 
-    };
+
+        };
 }
 
 

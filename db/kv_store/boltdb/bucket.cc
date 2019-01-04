@@ -7,7 +7,7 @@
 #include "Tx.h"
 #include "node.h"
 #include "page.h"
-#include "Cursor.h"
+#include "cursor.h"
 
 
 namespace boltdb {
@@ -124,8 +124,8 @@ namespace boltdb {
     }
 
 
-    Cursor* Bucket::newCursor() {
-        Cursor *c = new Cursor();
+    cursor* Bucket::newCursor() {
+        cursor *c = new cursor();
         c->bucket = this;
         return c;
     }
@@ -159,7 +159,7 @@ namespace boltdb {
     Status Bucket::spill() {
         // Spill all child buckets first.
         for( auto &b :buckets ){
-            std::vector<char> name = b.first;
+            boltdb_key_t name = b.first;
             auto &child = b.second;
             // If the child bucket is small enough and it has no child buckets then
             // write it inline into the parent bucket's page. Otherwise spill it
@@ -184,11 +184,11 @@ namespace boltdb {
 
             // Skip writing the bucket if there are no materialized nodes.
             if (child->rootNode == nullptr) {
-                        continue;
+                continue;
             }
 
             // Update parent node.
-            Cursor  *c = newCursor();
+            cursor  *c = newCursor();
 //            k, _, flags
             auto kv = c->seek(name);
             auto &k = std::get<0>(kv);
@@ -203,9 +203,11 @@ namespace boltdb {
                 assert(true);
             }
             //FIXME
+
 //            c->Node()->put(name, name, v, 0, bucketLeafFlag);
 
-            std::vector<char> v;
+//            std::vector<char> v;
+            boltdb_key_t v;
             c->Node()->put(name, name, v, 0, bucketLeafFlag);
 //            c.node().put([]byte(name), []byte(name), value, 0, bucketLeafFlag)
         }

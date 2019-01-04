@@ -10,6 +10,7 @@
 #include <mutex>
 #include <vector>
 #include <cassert>
+#include "config.h"
 
 
 namespace boltdb {
@@ -109,5 +110,10 @@ namespace boltdb {
 
     };
 
+    struct inode;
+    class Sort {
+    public:
+        static int Search(std::vector<inode *> &inodes, boltdb_key_t &key);
+    };
     
 } // blotdb

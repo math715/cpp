@@ -9,6 +9,7 @@
 #include <map>
 #include <vector>
 #include "error.h"
+#include "config.h"
 
 namespace  boltdb {
     class Tx;
@@ -34,7 +35,7 @@ namespace  boltdb {
 
     const double DefaultFillPercent = 0.5;
 
-    struct Cursor;
+    struct cursor;
     struct Bucket : public bucket  {
     public:
         Bucket(){
@@ -44,7 +45,7 @@ namespace  boltdb {
         Tx *tx;
 //        bucket bucket_;
 
-        std::map<std::vector<char>, Bucket*> buckets;
+        std::map<boltdb_key_t , Bucket*> buckets;
         page *page_;
         node *rootNode;
         std::map<pgid, node *> nodes;
@@ -58,7 +59,7 @@ namespace  boltdb {
         int maxInlineBucketSize();
         void free();
         char * write();
-        Cursor *newCursor();
+        cursor *newCursor();
         void dereference();
     };
 

@@ -7,10 +7,10 @@
 #include <vector>
 #include <map>
 #include <cstdint>
+#include "config.h"
 
 namespace boltdb {
-    using pgid = uint64_t ;
-    using txid = uint64_t ;
+
     class page;
     class Status;
     class freelist {
@@ -28,6 +28,9 @@ namespace boltdb {
         void rollback(txid tid);
         void release(txid tid);
         void reload(page *p);
+        int size();
+        int free_count();
+        int pending_count();
 
     };
 

@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <cassert>
 #include <cstring>
+#include <string>
 #include "Tx.h"
 
 namespace boltdb {
@@ -26,7 +27,7 @@ namespace boltdb {
         //FIXME
         int err = munmap(db->dataref, strlen(db->dataref));
         if (err != 0){
-            Status::IOError("munmap ");
+            return Status::IOError("munmap ");
         }
         db->dataref = nullptr;
         db->data = nullptr;
@@ -35,8 +36,8 @@ namespace boltdb {
 
     }
     Status DB::open(std::string path, boltdb::Options *ops, boltdb::DB **pDB) {
-        *pDB = nullptr;
         DB *db= new DB();
+        *pDB = db;
         (*pDB)->opened = true;
         const Options *pops = ops;
         if (ops == nullptr) {
@@ -55,21 +56,13 @@ namespace boltdb {
             db->readOnly = true;
 
         }
-//        int fd = ::open(path.c_str(), flag|O_CREAT, 0666);
         db->file = new File();
         auto status = db->file->Open(path.c_str(),  flag|O_CREAT, 0666);
-//                fopen(path.c_str(), "r+");
-//        int fd = fileno(db->file);
         if (!status.ok()) {
             return status;
         }
 
         int64_t sz = db->file->fileSize();
-//        struct stat sb;
-//        if (fstat(fd, &sb) == -1) {
-//            Status status = Status::NotFound(path);
-//            return status;
-//        }
         if (sz == 0) {
             Status status = db->init();
             if (!status.ok()){
@@ -80,13 +73,12 @@ namespace boltdb {
 //            size_t sz = read(fd, buf, 0x1000);
             size_t sz = db->file->Read(buf, 1, 0x1000);
             if (sz == -1) {
-                Status status = Status::IOError(path);
-                return status;
+                return Status::IOError(path);
             }
             auto m = db->pageInBuffer(buf, 0)->Meta();
-            Status status = m->Validate();
-            if (!status.ok()) {
-                return status;
+            Status err = m->Validate();
+            if (!err.ok()) {
+                return err;
             }
             db->pageSize = 0x1000;
         }
@@ -97,24 +89,6 @@ namespace boltdb {
 //            db = nullptr;
             return err;
         }
-//        mmaplock.lock();
-//        auto size = sb.st_size < pops->InitialMmapSize? pops->InitialMmapSize: sb.st_size;
-
-//        for (uint32_t i = 15; i <= 30; ++i) {
-//            if (size <= (1 << i)) {
-//                size = 1 << i;
-//                break;
-//            }
-//        }
-//        db->dataref = reinterpret_cast<char *>(mmap(NULL, size, PROT_WRITE, MAP_PRIVATE, fd, 0));
-//        if (db->dataref == MAP_FAILED) {
-//            Status status = Status::IOError("mmap");
-//            return status;
-//        }
-//        db->data = db->dataref;
-//        db->meta0 = db->Page(0)->Meta();
-//        db->meta1 = db->Page(1)->Meta();
-
 
         db->freelist_ = new freelist();
         db->freelist_->read(db->Page(db->Meta()->freelist));
@@ -205,17 +179,13 @@ namespace boltdb {
 
      Status meta::Validate() {
         if (magic != boltdb::magic) {
-                    Status stat = Status::InvalidArgument("magic ");
-                    return stat;
+            return Status::InvalidArgument("magic ");
         } else if (version != boltdb::version) {
-                    Status stat = Status::InvalidArgument("version ");
-                    return stat;
-         } else if (checksum != 0 && checksum != sum64()) {
-                Status stat = Status::InvalidArgument("checksum ");
-                return stat;
+            return Status::InvalidArgument("version ");
+        } else if (checksum != 0 && checksum != sum64()) {
+            return Status::InvalidArgument("checksum ");
         }
-         Status stat = Status::Ok();
-         return stat;
+         return Status::Ok();
     }
 
     void meta::write(boltdb::page *p) {

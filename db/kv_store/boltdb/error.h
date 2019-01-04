@@ -7,6 +7,10 @@ namespace boltdb {
     public:
         Status() noexcept : state_(nullptr){}
         ~Status(){ delete [] state_;}
+        Status(const Status& rhs);
+        Status& operator=(const Status& rhs);
+        Status(Status&& rhs) noexcept : state_(rhs.state_) { rhs.state_ = nullptr; }
+        Status& operator=(Status&& rhs) noexcept;
         static Status Ok() {return Status();}
         static Status NotFound(const std::string &msg, const std::string &msg2 = {}){
             return Status(kNotFound, msg, msg2);
@@ -26,12 +30,13 @@ namespace boltdb {
         static Status TxError(const std::string &msg, const std::string &msg2 = {}) {
             return Status(kTxError, msg, msg2);
         }
-        bool ok() const {            return state_ == nullptr;        }
-        bool IsNotFound() const {            return code() == kNotFound;  }
+        bool ok() const {   return state_ == nullptr;        }
+        bool IsNotFound() const {  return code() == kNotFound;  }
         bool IsCorruption() const { return code() == kCorruption;}
         std::string ToString() const;
 
     private:
+        static const char* CopyState(const char* state);
         const char * state_;
         enum Code {
             kOK = 0,
@@ -48,6 +53,24 @@ namespace boltdb {
         Status(Code code, const std::string &msg, const std::string &msg2);
 
     };
+
+    inline Status::Status(const Status& rhs) {
+        state_ = (rhs.state_ == nullptr) ? nullptr : CopyState(rhs.state_);
+    }
+    inline Status& Status::operator=(const Status& rhs) {
+        // The following condition catches both aliasing (when this == &rhs),
+        // and the common case where both rhs and *this are ok.
+        if (state_ != rhs.state_) {
+            delete[] state_;
+            state_ = (rhs.state_ == nullptr) ? nullptr : CopyState(rhs.state_);
+        }
+        return *this;
+    }
+    inline Status& Status::operator=(Status&& rhs) noexcept {
+        std::swap(state_, rhs.state_);
+        return *this;
+    }
+
 }
 /*
 

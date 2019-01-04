@@ -9,25 +9,24 @@
 #include "db.h"
 
 namespace  boltdb {
-    using key_t = std::vector<char>;
     struct Bucket;
     struct inode {
         uint32_t flags;
         pgid pgid_;
-        std::vector<char> key;
-        std::vector<char> value;
+        boltdb_key_t key;
+        boltdb_key_t value;
     };
     struct node {
         Bucket *bucket;
         bool isLeaf;
         bool      unbalanced;
         bool      spilled;
-        std::vector<char>  key;
+        boltdb_key_t key;
         pgid       pgid_;
         node       *parent;
         std::vector<node*>   children;
         std::vector<inode*>  inodes;
-        void del(std::vector<char> &key);
+        void del(boltdb_key_t &key);
         node* root();
         int minKeys();
         int size();
@@ -50,7 +49,7 @@ namespace  boltdb {
         std::pair<node*, node*> splitTwo(int pageSize);
         std::pair<int, int> splitIndex(int threshold);
         bool sizeLessThan(int v);
-        void put(key_t &oldKey, key_t &newKey, key_t &value, pgid id, uint32_t flags);
+        void put(boltdb_key_t &oldKey, boltdb_key_t &newKey, const boltdb_key_t &value, pgid id, uint32_t flags);
 
         Status spill();
         void rebalance();
