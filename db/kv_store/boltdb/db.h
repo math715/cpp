@@ -5,6 +5,7 @@
 #include <fstream>
 #include <vector>
 #include <mutex>
+#include <functional>
 #include "bucket.h"
 #include "error.h"
 #include "port.h"
@@ -49,7 +50,7 @@ namespace boltdb {
     };
 
     const Options DefautlOptions;
-    class Tx;
+    struct Tx;
     class freelist;
     struct TxStats;
 
@@ -74,6 +75,7 @@ namespace boltdb {
     class DB {
         
     public:
+        PagePool *pagePool;
         std::string path;
         bool   StrictMode;
         bool 	   NoSync;
@@ -118,8 +120,9 @@ namespace boltdb {
             return result;
         }
         static Status open( std::string path, Options *ops, DB **pDB) ;
-        void close();
-
+        Status close();
+        Status Close();
+        Status Munmap();
         Status init();
         page * pageInBuffer(char *buf, pgid id);
         page * Page(pgid id);
@@ -131,7 +134,6 @@ namespace boltdb {
         Status View(std::function<Status(Tx*)> fn);
 
         Status Mmap( int minsz);
-        Status Munmap();
         std::pair<int, Status> MmapSize(int size);
 
     private:

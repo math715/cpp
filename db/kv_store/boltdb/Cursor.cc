@@ -337,8 +337,8 @@ namespace boltdb {
         if (n == nullptr) {
             n = bucket->Node(stack[0].page_->id, nullptr);
         }
-        for (auto  : stack) {
-            ref
+        for (auto ref : stack) {
+            auto n = ref.node_;
             assert(!n->isLeaf);
             n = n->childAt(int(ref.index));
         }

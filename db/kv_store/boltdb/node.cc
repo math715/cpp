@@ -18,7 +18,7 @@ namespace  boltdb {
 
         // Exit if the key isn't found.
         if (it == inodes.end()  || (*it)->key != key) {
-            return
+            return ;
         }
 
         // Delete inode from the node.
@@ -119,7 +119,7 @@ namespace  boltdb {
                 auto elem = p->LeafPageElement(uint16_t(i));
                 inode->flags = elem->flags;
                 inode->key = elem->key();
-                inode->value = elem.value();
+                inode->value = elem->value();
             } else {
                 auto elem = p->BranchPageElement(uint16_t(i));
                 inode->pgid_ = elem->pgid_;

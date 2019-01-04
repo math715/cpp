@@ -11,6 +11,9 @@
 #include "freelist.h"
 
 namespace  boltdb {
+    Tx::Tx() {
+
+    }
     void Tx::init(boltdb::DB *db) {
         this->db_ = db;
         pages.clear();
@@ -115,7 +118,7 @@ namespace  boltdb {
                 for (int i = 0; i < db_->pageSize; ++i){
                     buf[i] = 0;
                 }
-                db_->pagePool.Put(buf);
+                db_->pagePool->put(buf);
         }
 
         return Status::Ok();
@@ -129,14 +132,14 @@ namespace  boltdb {
         meta_->write(p);
 
         // Write the meta page to file.
-        auto err = db_->file->writeAt(buf, db_->pageSize, p.id * int64_t(db_->pageSize));
+        auto err = db_->file->writeAt(buf, db_->pageSize, p->id * int64_t(db_->pageSize));
         if (!err.ok()){
             return err;
         }
 //        if _, err := tx.db.ops.writeAt(buf, int64(p.id)*int64(tx.db.pageSize)); err != nil {
 //                return err
 //        }
-        if (!db_.NoSync || IgnoreNoSync) {
+        if (!db_->NoSync || IgnoreNoSync) {
             auto err = db_->file->Fdatasync();
             if (!err.ok()){
                 return err;
@@ -174,7 +177,7 @@ namespace  boltdb {
         auto err = root.spill();
         if (!err.ok()) {
                 rollback();
-                return err
+                return err;
         }
 //        tx.stats.SpillTime += time.Since(startTime)
 

@@ -58,6 +58,9 @@ namespace boltdb {
             assert(fd_ != -1);
             return fd_;
         }
+        void Close();
+        void Funlock();
+        void Flock();
         static Status Mmap(boltdb::DB *db, int fd, int sz);
 
     private:

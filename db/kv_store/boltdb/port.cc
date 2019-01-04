@@ -7,8 +7,8 @@
 #include "db.h"
 #include <unistd.h>
 #include <cassert>
-#include <bits/mman.h>
 #include <sys/mman.h>
+#include <sys/file.h>
 
 namespace boltdb {
     Status File::Open(const char *path, int flags, mode_t mode) {
@@ -23,7 +23,7 @@ namespace boltdb {
         return Status::Ok();
     }
     Status File::Truncate(uint64_t sz) {
-        int ret = ftruncate(fd, sz);
+        int ret = ftruncate(fd_, sz);
         if (ret == 0) {
             return Status::Ok();
         } else {
@@ -31,7 +31,7 @@ namespace boltdb {
         }
     }
     Status File::Sync() {
-        int ret = fdatasync(fd);
+        int ret = fdatasync(fd_);
         if (ret == 0) {
             return Status::Ok();
         } else {
@@ -50,7 +50,7 @@ namespace boltdb {
     }
 
     Status File::Fdatasync() {
-        auto ret = fdatasync(fd);
+        auto ret = fdatasync(fd_);
         if (ret == -1) {
             Status::IOError("Fdatasync");
         }
@@ -58,7 +58,7 @@ namespace boltdb {
     }
     int64_t File::fileSize() {
         struct stat sb;
-        if (fstat(fd, &sb) == -1) {
+        if (fstat(fd_, &sb) == -1) {
             assert(true);
 //            Status status = Status::NotFound(path);
 //            return status;
@@ -93,6 +93,18 @@ namespace boltdb {
         db->data = reinterpret_cast<char(*)[maxMapSize]>(&ptr[0]);
         db->datasz = sz;
         return Status::Ok();
+    }
+
+    void File::Close() {
+        fclose(file);
+
+    }
+
+    void File::Flock() {
+        flock(fd_, LOCK_EX);
+    }
+    void File::Funlock() {
+        flock(fd_, LOCK_UN);
     }
 
 

@@ -13,8 +13,27 @@
 
 #include <cstdio>
 #include <cassert>
+#include <cstring>
+#include "Tx.h"
 
 namespace boltdb {
+    static Status Munmap(DB *db) {
+        if (db->dataref == nullptr){
+            return Status::Ok();
+        }
+
+        // Unmap using the original byte slice.
+        //FIXME
+        int err = munmap(db->dataref, strlen(db->dataref));
+        if (err != 0){
+            Status::IOError("munmap ");
+        }
+        db->dataref = nullptr;
+        db->data = nullptr;
+        db->datasz = 0;
+        return Status::Ok();
+
+    }
     Status DB::open(std::string path, boltdb::Options *ops, boltdb::DB **pDB) {
         *pDB = nullptr;
         DB *db= new DB();
@@ -390,6 +409,7 @@ namespace boltdb {
         }
 
         // Unmap existing data before continuing.
+//        auto err = boltdb::Munmap(this);
         auto err = Munmap();
         if (!err.ok()) {
             return err;
@@ -416,6 +436,7 @@ namespace boltdb {
 
         return Status::Ok();
     }
+
 
     std::pair<int, Status> DB::MmapSize(int size) {
         // Double the size from 32KB until 1GB.
@@ -489,6 +510,160 @@ namespace boltdb {
 
         defer_func(t);
         return err;
+    }
+
+    std::pair<Tx *, Status> DB::Begin(bool writeable) {
+        if (writeable) {
+            return BeginRWTx();
+        }
+        return BeginTx();
+    }
+
+    std::pair<Tx *, Status> DB::BeginTx() {
+        // Lock the meta pages while we initialize the transaction. We obtain
+        // the meta lock before the mmap lock because that's the order that the
+        // write transaction will obtain them.
+        metalock.Lock();
+
+        // Obtain a read-only lock on the mmap. When the mmap is remapped it will
+        // obtain a write lock so all transactions must finish before it can be
+        // remapped.
+        mmaplock.RLock();
+
+        // Exit if the database is not open yet.
+        if (!opened) {
+            mmaplock.RUnlock();
+            metalock.Unlock();
+            return std::make_pair(nullptr, Status::IOError("database not open"));
+        }
+
+        // Create a transaction associated with the database.
+        Tx *t = new Tx();
+        t->init(this);
+
+        // Keep track of transaction until it closes.
+        txs.push_back(t);
+        auto n = txs.size();
+
+        // Unlock the meta pages.
+        metalock.Unlock();
+
+        // Update the transaction stats.
+        statlock.Lock();
+        stats.TxN++;
+        stats.OpenTxN = n;
+        statlock.Unlock();
+
+        return std::make_pair(t, Status::Ok());
+
+
+    }
+
+    std::pair<Tx *, Status> DB::BeginRWTx() {
+        if (readOnly ){
+            return std::make_pair(nullptr, Status::IOError("database is in read-only mode"));
+        }
+
+        // Obtain writer lock. This is released by the transaction when it closes.
+        // This enforces only one writer transaction at a time.
+        rwlock.Lock();
+
+        // Once we have the writer lock then we can lock the meta pages so that
+        // we can set up the transaction.
+        metalock.Lock();
+//        defer db.metalock.Unlock()
+
+        // Exit if the database is not open yet.
+        if (!opened) {
+            rwlock.Unlock();
+            metalock.Unlock();
+            return std::make_pair(nullptr, Status::IOError("database not open"));
+        }
+
+        // Create a transaction associated with the database.
+//        t := &Tx{writable: true}
+        Tx *t = new Tx();
+        t->writable = false;
+        t->init(this);
+        rwtx = t;
+
+        // Free any pages associated with closed read-only transactions.
+        txid minid  = 0xFFFFFFFFFFFFFFFF;
+        for ( auto tx : txs) {
+            if (tx->meta_->txid < minid) {
+                minid = tx->meta_->txid;
+            }
+        }
+        if (minid > 0) {
+            freelist_->release(minid - 1);
+        }
+
+        return std::make_pair(t, Status::Ok());
+
+    }
+
+    Status DB::close() {
+        if (!opened) {
+            return Status::Ok();
+        }
+
+        opened = false;
+
+        freelist_ = nullptr;
+
+        // Clear ops.
+//        ops.writeAt = nullptr;
+
+        // Close the mmap.
+        auto err = Munmap();
+        if (!err.ok() ) {
+            return err;
+        }
+
+        file->Close();
+        // Close file handles.
+//        if file != nil) {
+//                    // No need to unlock read-only file.
+//                    if !db.readOnly {
+//                        // Unlock the file.
+//                        if err := funlock(db); err != nil {
+//                                log.Printf("bolt.Close(): funlock error: %s", err)
+//                        }
+//                    }
+//
+//                    // Close the file descriptor.
+//                    if err := db.file.Close(); err != nil {
+//                        return fmt.Errorf("db file close: %s", err)
+//                    }
+//                    db.file = nil
+//            }
+
+        path = "";
+        return Status::Ok();
+    }
+
+    Status DB::Close() {
+        rwlock.Lock();
+//        defer db.rwlock.Unlock()
+
+        metalock.Lock();
+//        defer db.metalock.Unlock()
+
+        mmaplock.RLock();
+//        defer db.mmaplock.RUnlock()
+        auto err = close();
+        rwlock.Unlock();
+        metalock.Unlock();
+        mmaplock.RUnlock();
+        return err;
+    }
+
+    Status DB::Munmap() {
+        auto err = boltdb::Munmap(this);
+        if (!err.ok()) {
+                return Status::IOError("unmap error: ");
+        }
+        return Status::Ok();
     }
 }
 

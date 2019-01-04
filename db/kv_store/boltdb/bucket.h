@@ -37,6 +37,9 @@ namespace  boltdb {
     struct Cursor;
     struct Bucket : public bucket  {
     public:
+        Bucket(){
+            Bucket(nullptr);
+        }
         Bucket(Tx *tx);
         Tx *tx;
 //        bucket bucket_;

@@ -32,6 +32,7 @@ namespace boltdb {
     struct meta;
     class Status;
     struct Tx {
+        Tx();
         bool writable;
         bool managed;
         DB   *db_;
