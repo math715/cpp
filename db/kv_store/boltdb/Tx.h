@@ -38,6 +38,8 @@ namespace boltdb {
         DB   *db_;
         meta  *meta_;
         Bucket root;
+//        std::pair<Bucket *,
+        XXStatus<Bucket *, Status> CreateBucket(boltdb_key_t &name);
         std::map<pgid, page*> pages;
         TxStats stats;
         int writeFlag;

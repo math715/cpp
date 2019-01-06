@@ -81,18 +81,18 @@ namespace boltdb {
 //        mmap(NULL, size, PROT_WRITE, MAP_PRIVATE, fd, 0)
         char * ptr = reinterpret_cast<char *>(mmap( nullptr, sz, PROT_READ, MAP_SHARED|db->MmapFlags, fd, 0));
         if (ptr == MAP_FAILED) {
-                    return Status::IOError("mmmap ");
+            return Status::IOError("mmmap ");
         }
 
         // Advise the kernel that the mmap is accessed randomly.
         int ret = madvise(ptr, sz, MADV_RANDOM);
         if (ret != 0){
-                return Status::IOError("madvise: %s");
+            return Status::IOError("madvise: %s");
         }
 
         // Save the original byte slice and convert to a byte array pointer.
         db->dataref = ptr;
-        db->data = reinterpret_cast<char(*)[maxMapSize]>(&ptr[0]);
+        db->data = reinterpret_cast<char*>(&ptr[0]);
         db->datasz = sz;
         return Status::Ok();
     }

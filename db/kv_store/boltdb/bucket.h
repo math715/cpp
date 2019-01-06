@@ -12,7 +12,7 @@
 #include "config.h"
 
 namespace  boltdb {
-    class Tx;
+    struct Tx;
     struct node;
     struct page;
     const int MaxKeySize = 32768;
@@ -58,9 +58,16 @@ namespace  boltdb {
         bool inlineable();
         int maxInlineBucketSize();
         void free();
-        char * write();
+        Slice write();
         cursor *newCursor();
         void dereference();
+
+        XXStatus<Bucket*> CreateBucket(boltdb_key_t name);
+        Bucket *GetBucket(boltdb_key_t &key);
+        Bucket *openBucket(boltdb_key_t &value);
+
+        boltdb_key_t Get(boltdb_key_t &key);
+        Status Put(boltdb_key_t &key, boltdb_key_t &value);
     };
 
 

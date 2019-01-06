@@ -3,6 +3,7 @@
 //
 
 #include <cassert>
+#include <stdint-gcc.h>
 #include "bucket.h"
 #include "Tx.h"
 #include "node.h"
@@ -125,6 +126,7 @@ namespace boltdb {
 
 
     cursor* Bucket::newCursor() {
+        tx->stats.CursorCount++;
         cursor *c = new cursor();
         c->bucket = this;
         return c;
@@ -132,17 +134,19 @@ namespace boltdb {
 
     void Bucket::dereference() {
         if (rootNode != nullptr) {
-                    rootNode->root()->dereference();
+            rootNode->root()->dereference();
         }
 
         for ( auto child : buckets) {
             child.second->dereference();
         }
     }
-    char * Bucket::write() {
+    Slice Bucket::write() {
         auto  n = rootNode;
 //        var value = make([]byte, bucketHeaderSize+n.size());
-        char *value = new char[bucketHeaderSize + n->size()];
+        auto sz = bucketHeaderSize + n->size();
+        char *value = new char[sz];
+        Slice slice(value, sz);
         // Write a bucket header.
         Bucket* b = reinterpret_cast<Bucket *>(value);
         b->root = root;
@@ -152,7 +156,7 @@ namespace boltdb {
         page  *p = reinterpret_cast<page *>(&value[bucketHeaderSize]);
         n->write(p);
 
-        return value;
+        return slice;
 
     }
 
@@ -165,7 +169,7 @@ namespace boltdb {
             // write it inline into the parent bucket's page. Otherwise spill it
             // like a normal bucket and make the parent value a pointer to the page.
 //            var value []byte
-            char *value;
+            Slice value;
             if (child->inlineable()) {
                 child->free();
                 value = child->write();
@@ -176,8 +180,9 @@ namespace boltdb {
                 }
 
                 // Update the child bucket header in this bucket.
-                value = new char[sizeof(bucket)];
-                bucket *b = reinterpret_cast<bucket*>(&value[0]);
+//                value = new char[sizeof(bucket)];
+                char *v = value.data();
+                bucket *b = reinterpret_cast<bucket*>(&v[0]);
                 b->root = child->root;
                 b->sequence = child->sequence;
             }
@@ -202,13 +207,7 @@ namespace boltdb {
 //                panic(fmt.Sprintf("unexpected bucket header flag: %x", flags));
                 assert(true);
             }
-            //FIXME
-
-//            c->Node()->put(name, name, v, 0, bucketLeafFlag);
-
-//            std::vector<char> v;
-            boltdb_key_t v;
-            c->Node()->put(name, name, v, 0, bucketLeafFlag);
+            c->Node()->put(name, name, value, 0, bucketLeafFlag);
 //            c.node().put([]byte(name), []byte(name), value, 0, bucketLeafFlag)
         }
 
@@ -232,5 +231,132 @@ namespace boltdb {
         root = rootNode->pgid_;
 
         return Status::Ok();
+    }
+
+
+
+    XXStatus<Bucket *> Bucket::CreateBucket(boltdb::boltdb_key_t name) {
+        if (tx->db_ == nullptr ){
+            Status    ErrTxClosed =  Status::TxError("Tx Closed");
+            return XXStatus<Bucket *> (nullptr, ErrTxClosed);
+        } else if (!tx->writable ){
+            return XXStatus<Bucket *>(nullptr, Status::TxError("Tx not writable"));
+        } else if (name.size() == 0) {
+//            return nil, ErrBucketNameRequired
+            return XXStatus<Bucket*> (nullptr, Status::TxError("Bucket name required "));
+        }
+
+        // Move cursor to correct position.
+        auto c = newCursor();
+        auto kvflag = c->seek(name);
+
+        // Return an error if there is an existing key.
+        if (std::get<0>(kvflag) == name) {
+            if ( (std::get<2>(kvflag) & bucketLeafFlag) != 0) {
+                return XXStatus<Bucket *>(nullptr, Status::BucketError("bucket already exists"));
+            }
+            return XXStatus<Bucket*> (nullptr, Status::BucketError("incompatible value"));
+        }
+
+
+        // Create empty, inline bucket.
+//        var bucket = Bucket{
+//                bucket:      &bucket{},
+//                rootNode:    &node{isLeaf: true},
+//                FillPercent: DefaultFillPercent,
+//        }
+        Bucket *b = new Bucket();
+        Slice v = b->write();
+
+        c->Node()->put(name, name, v, 0, bucketLeafFlag);
+        // Insert into node.
+//        key = cloneBytes(key)
+//        c->Node()->put(key, key, v, 0, bucketLeafFlag);
+
+        // Since subbuckets are not allowed on inline buckets, we need to
+        // dereference the inline page, if it exists. This will cause the bucket
+        // to be treated as a regular, non-inline bucket for the rest of the tx.
+        page_ = nullptr;
+
+        return XXStatus<Bucket*> (b->GetBucket(name), Status::Ok());
+    }
+
+
+    Bucket* Bucket::GetBucket(boltdb::boltdb_key_t &key) {
+        if (!buckets.empty()) {
+            if (buckets.find(key) != buckets.end()){
+                return buckets[key];
+            }
+//            if child := buckets[string(name)]; child != nil {
+//                        return child
+//            }
+        }
+
+        // Move cursor to key.
+        auto c = newCursor();
+        auto kvflag = c->seek(key);
+
+        // Return nil if the key doesn't exist or it is not a bucket.
+        if ((std::get<0>(kvflag) != key) || (std::get<2>(kvflag) &bucketLeafFlag) == 0 ) {
+            return nullptr;
+        }
+
+        // Otherwise create a bucket and cache it.
+        auto  child = openBucket(std::get<1>(kvflag));
+        if (buckets.empty()) {
+            buckets[key] = child;
+        }
+
+        return child;
+    }
+
+
+    Bucket* Bucket::openBucket(boltdb::boltdb_key_t &value) {
+        auto child = new Bucket(tx);
+
+        // If unaligned load/stores are broken on this arch and value is
+        // unaligned simply clone to an aligned byte array.
+//        unaligned := brokenUnaligned && uintptr(unsafe.Pointer(&value[0]))&3 != 0
+        ;
+        bool unaligned = (reinterpret_cast<uintptr_t >(value.data()) & 3) != 0;
+        if (unaligned) {
+            value  = value.AlignedClone(value);
+        }
+
+        // If this is a writable transaction then we need to copy the bucket entry.
+        // Read-only transactions can point directly at the mmap entry.
+        if (tx->writable && !unaligned) {
+            child->root = 0;
+            child->sequence = 0;
+            child.bucket = *(*bucket)(unsafe.Pointer(&value[0]))
+        } else {
+            child.bucket = (*bucket)(unsafe.Pointer(&value[0]))
+        }
+
+        // Save a reference to the inline page if the bucket is inline.
+        if (child.root == 0) {
+            child.page = (*page)(unsafe.Pointer(&value[bucketHeaderSize]))
+        }
+
+        return child;
+    }
+
+    boltdb_key_t Bucket::Get(boltdb::boltdb_key_t &key) {
+        k, v, flags := b.Cursor().seek(key)
+
+        // Return nil if this is a bucket.
+        if (flags & bucketLeafFlag) != 0 {
+            return nil
+        }
+
+        // If our target node isn't the same key as what's passed in then return nil.
+        if !bytes.Equal(key, k) {
+            return nil
+        }
+        return v
+    }
+
+    Status Bucket::Put(boltdb::boltdb_key_t &key, boltdb::boltdb_key_t &value) {
+
     }
 }

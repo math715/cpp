@@ -12,11 +12,11 @@ namespace boltdb {
         Status(Status&& rhs) noexcept : state_(rhs.state_) { rhs.state_ = nullptr; }
         Status& operator=(Status&& rhs) noexcept;
         static Status Ok() {return Status();}
-        static Status NotFound(const std::string &msg, const std::string &msg2 = {}){
-            return Status(kNotFound, msg, msg2);
+        static Status BucketError(const std::string &msg, const std::string &msg2 = {}){
+            return Status(kBucketError, msg, msg2);
         }
-        static Status Corruption(const std::string &msg, const std::string &msg2 = {}){
-            return Status(kCorruption, msg, msg2);
+        static Status DatabaseError(const std::string &msg, const std::string &msg2 = {}){
+            return Status(kDatabaseError, msg, msg2);
         }
         static Status NotSupported(const std::string &msg, const std::string &msg2 = {}) {
             return Status(kNotSupported, msg, msg2);
@@ -31,8 +31,8 @@ namespace boltdb {
             return Status(kTxError, msg, msg2);
         }
         bool ok() const {   return state_ == nullptr;        }
-        bool IsNotFound() const {  return code() == kNotFound;  }
-        bool IsCorruption() const { return code() == kCorruption;}
+        bool IsBucketError() const {  return code() == kBucketError;  }
+        bool IsDatabaseError() const { return code() == kDatabaseError;}
         std::string ToString() const;
 
     private:
@@ -40,8 +40,8 @@ namespace boltdb {
         const char * state_;
         enum Code {
             kOK = 0,
-            kNotFound = 1,
-            kCorruption = 2,
+            kBucketError = 1,
+            kDatabaseError = 2,
             kNotSupported = 3,
             kInvalidArgument = 4,
             kIOError = 5,
@@ -70,6 +70,35 @@ namespace boltdb {
         std::swap(state_, rhs.state_);
         return *this;
     }
+
+
+    template <typename T, typename S = Status>
+    class XXStatus {
+    public:
+        XXStatus(T &t, S& s): xx_status(t, s){
+        }
+        XXStatus(T t, S s): xx_status(t,s){
+
+        }
+
+        bool ok() {
+            return xx_status.ok();
+        }
+        std::string ErrString() {
+            return xx_status.second.toString();
+        }
+        S  status() {
+            return xx_status.second;
+        }
+        T & value() {
+            return xx_status.first;
+        }
+    private:
+        std::pair<T, S> xx_status;
+
+    };
+
+
 
 }
 /*

@@ -30,11 +30,11 @@ namespace boltdb {
                     case kOK:
                         type = "OK";
                         break;
-                    case kNotFound:
-                        type = "NotFound: ";
+                    case kBucketError:
+                        type = "Bucket error: ";
                         break;
-                    case kCorruption:
-                        type = "Corruption: ";
+                    case kDatabaseError:
+                        type = "Database error: ";
                         break;
                     case kNotSupported:
                         type = "Not implemented: ";
@@ -67,6 +67,7 @@ namespace boltdb {
         memcpy(&size, state, sizeof(size));
         char* result = new char[size + 5];
         memcpy(result, state, size + 5);
-        return result;}
+        return result;
+        }
     
 } // blotdb

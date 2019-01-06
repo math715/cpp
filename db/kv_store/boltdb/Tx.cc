@@ -328,4 +328,8 @@ namespace  boltdb {
         pages.clear();
     }
 
+
+    XXStatus<Bucket *, Status> Tx::CreateBucket(boltdb::boltdb_key_t &name) {
+        return root.CreateBucket(name);
+    }
 }

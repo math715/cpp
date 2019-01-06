@@ -9,6 +9,7 @@ namespace boltdb {
     class Slice {
     public:
         Slice(): data_(nullptr), size_(0), cap_(0){}
+
         Slice(char *data, int n, bool flag = false) {
             if (!flag) {
                 data_ = data;
@@ -38,6 +39,9 @@ namespace boltdb {
         const char *data() const {
             return data_;
         }
+        char *data() {
+            return data_;
+        }
         int size() const {
             return size_;
         }
@@ -51,6 +55,7 @@ namespace boltdb {
         std::string toString() const {
             return std::string(data_, size_);
         }
+        Slice AlignedClone( Slice &s);
 
         int compare(const Slice& b) const;
 
@@ -83,6 +88,15 @@ namespace boltdb {
             else if (size_ > b.size_) r = +1;
         }
         return r;
+    }
+
+    Slice Slice::AlignedClone(boltdb::Slice &s) {
+        s.cap_ = (s.size_ + 7 )>> 3 << 3;
+        char *data = new char[s.cap_];
+        memcpy(data, s.data(), s.size());
+        delete [] s.data();
+        s.data_ = data;
+        return s;
     }
 }
 

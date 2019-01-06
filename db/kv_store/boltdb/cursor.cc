@@ -320,15 +320,15 @@ namespace boltdb {
 
     Status cursor::Delete() {
         if (bucket->tx->db_ == nullptr) {
-            return Status::Corruption("ex closed");
+            return Status::TxError("tx closed");
         } else if (!bucket->tx->writable) {
-            return Status::Corruption("tx not writable");
+            return Status::TxError("tx not writable");
         }
 
         auto kv = keyValue();
         // Return an error if current value is a bucket.
         if ((std::get<2>(kv) & bucketLeafFlag) != 0) {
-            return Status::Corruption("incompatible value");
+            return Status::TxError("incompatible value");
         }
         node().del(std::get<0>(kv));
 

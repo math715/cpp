@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <cassert>
 #include <cstring>
+#include <cstddef>
 #include <string>
 #include "Tx.h"
 
@@ -82,7 +83,7 @@ namespace boltdb {
             }
             db->pageSize = 0x1000;
         }
-        auto err = db->Mmap(ops->InitialMmapSize);
+        auto err = db->Mmap(pops->InitialMmapSize);
         if (!err.ok()){
             db->close();
             delete db;
@@ -208,7 +209,7 @@ namespace boltdb {
     }
 
     uint64_t meta::sum64() {
-        return FNV::FNV_64a(reinterpret_cast<char*>(this),sizeof (meta));
+        return FNV::FNV_64a(reinterpret_cast<char*>(this), offsetof(meta, checksum));
     }
 
     std::pair<page *, Status> DB::allocate(int count) {
@@ -386,7 +387,7 @@ namespace boltdb {
         }
 
         // Memory-map the data file as a byte slice.
-        err = File::Mmap(this, file->fd(), size);
+        err = File::Mmap(this, file->fd(), serr.first);
         if (!err.ok()) {
                 return err;
         }

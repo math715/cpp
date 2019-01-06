@@ -84,8 +84,8 @@ namespace boltdb {
         std::chrono::milliseconds MaxBatchDelay;
         int    AllocSize;
         File   *file;
-        char * dataref;
-        char (* data)[maxMapSize];
+        char * dataref; // map
+        char * data;
         int  datasz;
         int  filesz;
         meta * meta0;
