@@ -15,15 +15,16 @@ namespace  boltdb {
 
     }
     void Tx::init(boltdb::DB *db) {
-        this->db_ = db;
+        db_ = db;
         pages.clear();
         meta_ = new meta();
         *meta_ = *(db->Meta());
+//        root = newBucket(this);
         root = Bucket(this);
         root.root = meta_->root.root;
         root.sequence = meta_->root.sequence;
         if (writable) {
-                meta_->txid += txid(1);
+            meta_->txid += txid(1);
         }
     }
 
@@ -331,5 +332,9 @@ namespace  boltdb {
 
     XXStatus<Bucket *, Status> Tx::CreateBucket(boltdb::boltdb_key_t &name) {
         return root.CreateBucket(name);
+    }
+
+    Bucket* Tx::GetBucket(boltdb::boltdb_key_t &key) {
+        return root.GetBucket(key);
     }
 }

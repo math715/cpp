@@ -1,6 +1,7 @@
 #pragma once 
 
 #include <string>
+#include <c++/4.8/utility>
 
 namespace boltdb {
     class Status {
@@ -82,7 +83,7 @@ namespace boltdb {
         }
 
         bool ok() {
-            return xx_status.ok();
+            return xx_status.second.ok();
         }
         std::string ErrString() {
             return xx_status.second.toString();

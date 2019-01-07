@@ -6,10 +6,23 @@
 
 #include <iostream>
 #include <string>
+#include <cstring>
+#include <gtest/gtest.h>
 #include "db.h"
 #include "Tx.h"
 
-int main( ) {
+
+int tmain(int argc, char **argv){
+    testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}
+int main(int argc, char *argv[] ) {
+    if (argc > 0) {
+        if (strcasecmp(argv[1], "test") == 0){
+            return tmain(argc - 1, argv + 1);
+        }
+    }
+
     std::string path="test.db";
     boltdb::DB *db;
     boltdb::Status status = boltdb::DB::open(path, nullptr, &db);
@@ -20,11 +33,10 @@ int main( ) {
 
     auto func = [](boltdb::Tx *tx)->boltdb::Status{
         // Create a bucket.
-        std::string bucketname = "widgets";
-        boltdb::Slice bucketkey (bucketname);
+        boltdb::Slice bucketkey ("widgets");
         auto bucket_status= tx->CreateBucket(bucketkey);
         if (!bucket_status.ok()) {
-                    return bucket_status.status();
+            return bucket_status.status();
         }
 
         // Set the value "bar" for the key "foo".
@@ -38,7 +50,9 @@ int main( ) {
         return boltdb::Status::Ok();
     };
     auto viewfunc = [](boltdb::Tx *tx) ->boltdb::Status {
-        auto value = tx->Bucket("widgets")->Get("foo");
+        boltdb::Slice bucket_name("widgets");
+        boltdb::Slice key("foo");
+        auto value = tx->GetBucket(bucket_name)->Get(key);
         std::cerr << value << std::endl;
         return boltdb::Status::Ok();
     };
@@ -46,6 +60,16 @@ int main( ) {
     if (!status.ok()){
         std::cerr << status.ToString() << std::endl;
     }
+
+    status = db->View(viewfunc);
+
+    status = db->Close();
+
+    if (!status.ok()){
+        std::cout << status.ToString() << std::endl;
+    }
+
+
 
     return 0;
 }

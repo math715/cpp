@@ -57,7 +57,7 @@ namespace boltdb {
             db->readOnly = true;
 
         }
-        db->file = new File();
+        db->file = new File(path);
         auto status = db->file->Open(path.c_str(),  flag|O_CREAT, 0666);
         if (!status.ok()) {
             return status;
@@ -318,7 +318,7 @@ namespace boltdb {
     Status DB::Update(std::function<Status(Tx *)> fn) {
         auto txerr = Begin(true);
         auto t = txerr.first;
-        if (txerr.second.ok()) {
+        if (!txerr.second.ok()) {
             return txerr.second;
         }
 

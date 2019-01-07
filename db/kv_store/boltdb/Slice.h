@@ -2,8 +2,10 @@
 // Created by ruoshui on 12/30/18.
 //
 
+#pragma  once
 
 #include <cstring>
+#include <ostream>
 
 namespace boltdb {
     class Slice {
@@ -22,6 +24,12 @@ namespace boltdb {
                 memcpy(data_, data, n);
 
             }
+        }
+        Slice(std::string s) {
+            size_ = s.size();
+            cap_ = (size_ + 7) >> 3 << 3;
+            data_ = new char[cap_];
+            memcpy(data_, s.data(), s.size());
         }
         Slice(std::string &s){
             size_ = s.size();
@@ -72,7 +80,7 @@ namespace boltdb {
     inline bool operator!=(const Slice& x, const Slice&y) {
         return !(x == y);
     }
-    bool operator<(const Slice& x, const Slice& y)  {
+    inline bool operator<(const Slice& x, const Slice& y)  {
         return x.compare(y) < 0;
 //        return __x < __y;
     }
@@ -93,15 +101,9 @@ namespace boltdb {
         }
         return r;
     }
+    std::ostream& operator<<(std::ostream &os, const Slice &s);
 
-    Slice Slice::AlignedClone(boltdb::Slice &s) {
-        s.cap_ = (s.size_ + 7 )>> 3 << 3;
-        char *data = new char[s.cap_];
-        memcpy(data, s.data(), s.size());
-        delete [] s.data();
-        s.data_ = data;
-        return s;
-    }
+
 }
 
 

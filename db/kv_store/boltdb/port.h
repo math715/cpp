@@ -46,7 +46,7 @@ namespace boltdb {
     class  File {
 
     public:
-        File ():file(nullptr),path(nullptr),fd_(-1){}
+        File(const std::string &path) : file(nullptr), path(path), fd_(-1){}
         Status Open(const char *path, int flags, mode_t mode);
         Status Truncate(uint64_t sz);
         Status Sync();
@@ -67,7 +67,7 @@ namespace boltdb {
     private:
         FILE *file;
         int fd_;
-        char *path;
+        std::string path;
 
     };
     struct page;

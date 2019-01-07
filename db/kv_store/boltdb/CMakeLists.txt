@@ -26,7 +26,10 @@ add_executable(boltdb
         node.h
         port.cc
         main.cc
-        config.h)
+        config.h
+        Slice.cc
+        bucket_test.cc
+        node_test.cc cursor_test.cc db_test.cc freelist_test.cc page_test.cc tx_test.cc)
 
-target_link_libraries(boltdb pthread)
+target_link_libraries(boltdb pthread gtest)
 
