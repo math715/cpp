@@ -20,7 +20,8 @@ int main( ) {
 
     auto func = [](boltdb::Tx *tx)->boltdb::Status{
         // Create a bucket.
-        boltdb::Slice bucketkey = "widgets";
+        std::string bucketname = "widgets";
+        boltdb::Slice bucketkey (bucketname);
         auto bucket_status= tx->CreateBucket(bucketkey);
         if (!bucket_status.ok()) {
                     return bucket_status.status();
@@ -28,7 +29,9 @@ int main( ) {
 
         // Set the value "bar" for the key "foo".
         boltdb::Bucket *b = bucket_status.value();
-        auto err = b->Put("foo", "bar");
+        boltdb::Slice k("foo");
+        boltdb::Slice v("bar");
+        auto err = b->Put(k, v);
         if (!err.ok()) {
             return err;
         }

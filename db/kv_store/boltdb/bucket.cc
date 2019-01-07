@@ -326,34 +326,36 @@ namespace boltdb {
         // If this is a writable transaction then we need to copy the bucket entry.
         // Read-only transactions can point directly at the mmap entry.
         if (tx->writable && !unaligned) {
-            child->root = 0;
-            child->sequence = 0;
-            child.bucket = *(*bucket)(unsafe.Pointer(&value[0]))
+            bucket *b = reinterpret_cast<bucket *> (value.data());
+            child->root = b->root;
+            child->sequence = b->sequence;
         } else {
-            child.bucket = (*bucket)(unsafe.Pointer(&value[0]))
+            bucket *b = reinterpret_cast<bucket *> (value.data());
+            child->root = b->root;
+            child->sequence = b->sequence;
         }
 
         // Save a reference to the inline page if the bucket is inline.
-        if (child.root == 0) {
-            child.page = (*page)(unsafe.Pointer(&value[bucketHeaderSize]))
+        if (child->root == 0) {
+            child->page_ = reinterpret_cast<page *>(&(value.data()[bucketHeaderSize]));
         }
 
         return child;
     }
 
     boltdb_key_t Bucket::Get(boltdb::boltdb_key_t &key) {
-        k, v, flags := b.Cursor().seek(key)
+        auto key_value_flags = newCursor()->seek(key);
 
         // Return nil if this is a bucket.
-        if (flags & bucketLeafFlag) != 0 {
-            return nil
+        if ((std::get<2>(key_value_flags) & bucketLeafFlag) != 0) {
+            return Slice();
         }
 
         // If our target node isn't the same key as what's passed in then return nil.
-        if !bytes.Equal(key, k) {
-            return nil
+        if (key != std::get<0>(key_value_flags)) {
+            return Slice();
         }
-        return v
+        return std::get<1>(key_value_flags);
     }
 
     Status Bucket::Put(boltdb::boltdb_key_t &key, boltdb::boltdb_key_t &value) {

@@ -72,6 +72,10 @@ namespace boltdb {
     inline bool operator!=(const Slice& x, const Slice&y) {
         return !(x == y);
     }
+    bool operator<(const Slice& x, const Slice& y)  {
+        return x.compare(y) < 0;
+//        return __x < __y;
+    }
 //    inline bool operator<(const Slice &x, const Slice &y) {
 //        int size = std::min(x.size(), y.size());
 //        int ret = memcmp(x.data(), y.data(), size);
