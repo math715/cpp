@@ -350,10 +350,12 @@ namespace boltdb {
         auto n = stack[0].node_;
         if (n == nullptr) {
             n = bucket->Node(stack[0].page_->id, nullptr);
+//            stack[0].node_ = n;
         }
-        for (auto ref : stack) {
-            auto n = ref.node_;
-            assert(!n->isLeaf);
+        for (int i = 0; i <  stack.size() - 1; ++i ) {
+            auto ref = stack[i];
+//            auto n = ref.node_;
+            assert(!n->isLeaf); // expect branch node
             n = n->childAt(int(ref.index));
         }
         assert(n->isLeaf);

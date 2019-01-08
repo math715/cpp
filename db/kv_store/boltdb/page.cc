@@ -20,7 +20,7 @@ namespace boltdb {
     }
 
     boltdb_key_t leafPageElement::key() {
-        char *buf = reinterpret_cast<char*>(&(this->pos));
+        char *buf = reinterpret_cast<char*>(this);
         buf = buf + pos;
         boltdb_key_t key(buf, ksize);
 //        for (int i =0; i < ksize; ++i) {

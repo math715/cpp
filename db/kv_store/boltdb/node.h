@@ -11,12 +11,17 @@
 namespace  boltdb {
     struct Bucket;
     struct inode {
+        inode() = default;
+        inode( uint32_t f,  pgid id, const boltdb_key_t &k, const boltdb_key_t &v)
+            :flags(f), pgid_(id), key(k), value(v){
+        }
         uint32_t flags;
         pgid pgid_;
         boltdb_key_t key;
         boltdb_key_t value;
     };
     struct node {
+        ~node();
         Bucket *bucket;
         bool isLeaf;
         bool      unbalanced;

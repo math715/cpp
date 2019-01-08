@@ -33,7 +33,7 @@ int main(int argc, char *argv[] ) {
 
     auto func = [](boltdb::Tx *tx)->boltdb::Status{
         // Create a bucket.
-        boltdb::Slice bucketkey ("widgets");
+        boltdb::boltdb_key_t bucketkey ("widgets");
         auto bucket_status= tx->CreateBucket(bucketkey);
         if (!bucket_status.ok()) {
             return bucket_status.status();
@@ -41,8 +41,8 @@ int main(int argc, char *argv[] ) {
 
         // Set the value "bar" for the key "foo".
         boltdb::Bucket *b = bucket_status.value();
-        boltdb::Slice k("foo");
-        boltdb::Slice v("bar");
+        boltdb::boltdb_key_t k("foo");
+        boltdb::boltdb_key_t v("bar");
         auto err = b->Put(k, v);
         if (!err.ok()) {
             return err;
@@ -50,8 +50,8 @@ int main(int argc, char *argv[] ) {
         return boltdb::Status::Ok();
     };
     auto viewfunc = [](boltdb::Tx *tx) ->boltdb::Status {
-        boltdb::Slice bucket_name("widgets");
-        boltdb::Slice key("foo");
+        boltdb::boltdb_key_t bucket_name("widgets");
+        boltdb::boltdb_key_t key("foo");
         auto value = tx->GetBucket(bucket_name)->Get(key);
         std::cerr << value << std::endl;
         return boltdb::Status::Ok();

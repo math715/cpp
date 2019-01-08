@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cstring>
 #include <algorithm>
+#include <iostream>
 #include "node.h"
 #include "page.h"
 #include "Tx.h"
@@ -48,8 +49,11 @@ namespace  boltdb {
     int node::size() {
         auto sz = pageHeaderSize;
         auto elsz = pageElementSize();
-
-
+        for (int i = 0; i < inodes.size(); i++) {
+            auto item = inodes[i];
+            sz += elsz + item->key.size() + item->value.size();
+        }
+        return sz;
     }
 
     int node::pageElementSize() {
@@ -61,7 +65,10 @@ namespace  boltdb {
 
     node* node::childAt(int index) {
         if (isLeaf) {
-            assert(true);
+//            assert(true);
+            auto err = Status::DatabaseError("node is isLeaf ", __FUNCTION__);
+            std::cerr << err.ToString() << std::endl;
+            abort();
         }
         return bucket->Node(inodes[index]->pgid_, this);
     }
@@ -119,20 +126,20 @@ namespace  boltdb {
         pgid_ = p->id;
         isLeaf = ((p->flags & leafPageFlag) != 0);
 //        n.inodes = make(inodes, int(p.count))
-        inodes.resize(p->count);
         for (int i = 0; i < int(p->count); i++ ){
-            auto inode = inodes[i];
+            auto inode_ptr = new inode();
             if (isLeaf) {
                 auto elem = p->LeafPageElement(uint16_t(i));
-                inode->flags = elem->flags;
-                inode->key = elem->key();
-                inode->value = elem->value();
+                inode_ptr->flags = elem->flags;
+                inode_ptr->key = elem->key();
+                inode_ptr->value = elem->value();
             } else {
                 auto elem = p->BranchPageElement(uint16_t(i));
-                inode->pgid_ = elem->pgid_;
-                inode->key = elem->key();
+                inode_ptr->pgid_ = elem->pgid_;
+                inode_ptr->key = elem->key();
             }
-            assert(!inode->key.empty());
+            assert(!inode_ptr->key.empty());
+            inodes.push_back(inode_ptr);
         }
 
         // Save first key so we can find the node in the parent when we spill.
@@ -145,6 +152,9 @@ namespace  boltdb {
     }
 
     void node::write(boltdb::page *p) {
+        p->id = 0;
+        p->overflow = 0;
+        p->flags = 0;
         if (isLeaf) {
             p->flags |= leafPageFlag;
         } else {
@@ -195,7 +205,7 @@ namespace  boltdb {
 
             // If we can't split then exit the loop.
             if (pair_node.second == nullptr) {
-                        break;
+                break;
             }
 
             // Set node to b so it gets split on the next iteration.
@@ -203,6 +213,12 @@ namespace  boltdb {
         }
 
         return result;
+    }
+
+    node::~node() {
+        for (auto n : inodes) {
+            delete n;
+        }
     }
 
     std::pair<node*, node*> node::splitTwo(int pageSize) {
@@ -218,9 +234,11 @@ namespace  boltdb {
         }
         auto threshold = int(pageSize * fillPercent);
         auto split_index = splitIndex(threshold);
+        // create parent node, add self to parent children
         if (parent == nullptr) {
             parent = new node();
             parent->bucket = this->bucket;
+            parent->children.push_back(this);
 
         }
         auto next = new node();
@@ -229,19 +247,13 @@ namespace  boltdb {
         next->parent = parent;
         parent->children.push_back(next);
         for (int idx = split_index.first, i = 0; idx < inodes.size(); ++idx) {
-            next->inodes[i] = inodes[idx];
+//            next->inodes[i] = inodes[idx];
+                next->inodes.push_back(inodes[idx]);
         }
         inodes.resize(split_index.first);
-
         // Update the statistics.
         bucket->tx->stats.Split++;
-
         return std::make_pair(this, next);
-
-
-
-
-
     }
 
    std::pair<int, int> node::splitIndex(int threshold) {
@@ -259,9 +271,8 @@ namespace  boltdb {
            // If we have at least the minimum number of keys and adding another
            // node would put us over the threshold then exit and return.
            if (i >= minKeysPerPage && sz+elsize > threshold) {
-                       break;
+               break;
            }
-
            // Add the element size to the total size.
            sz += elsize;
        }
@@ -283,7 +294,7 @@ namespace  boltdb {
     }
 
 
-    void node::put(boltdb::boltdb_key_t &oldKey, boltdb::boltdb_key_t &newKey, const boltdb_key_t &value,
+    void node::put(boltdb_key_t &oldKey, boltdb_key_t &newKey, const boltdb_key_t &value,
                    boltdb::pgid id,
                    uint32_t flags) {
         if (id >= bucket->tx->meta_->pgcnt) {
@@ -298,25 +309,21 @@ namespace  boltdb {
         }
 
         // Find insertion index.
-//        index := sort.Search(len(n.inodes), func(i int) bool { return bytes.Compare(n.inodes[i].key, oldKey) != -1 })
-//        auto it = std::lower_bound(inodes.begin(), inodes.end(), oldKey);
-//        int index = it - inodes.begin();
         int index = Sort::Search(inodes, oldKey);
         // Add capacity and shift nodes if we don't have an exact match and need to insert.
         bool exact = inodes.size() > 0 && index < inodes.size() && (inodes[index]->key == oldKey);
         if (!exact) {
-                    inodes.resize(inodes.size() + 1);
-                    for (int idx = inodes.size() - 1; idx >= index; --idx) {
-                        inodes[idx+1] = inodes[idx];
-                    }
+            inode *n = new inode(flags, id, newKey, value);
+            assert(n->key.size() > 0);
+            inodes.insert(inodes.begin() + index, n);
+        } else {
+            auto n = inodes[index];
+            n->flags = flags;
+            n->key = newKey;
+            n->value = value;
+            n->pgid_ = id;
+            assert(n->key.size() > 0);
         }
-
-        auto n = inodes[index];
-        n->flags = flags;
-        n->key = newKey;
-        n->value = value;
-        n->pgid_ = id;
-        assert(n->key.size() > 0);
     }
 
     Status node::spill() {

@@ -37,6 +37,45 @@ namespace boltdb {
             data_ = new char[cap_];
             memcpy(data_, s.data(), s.size());
         }
+        /*
+        Slice(Slice &s) {
+            if (s.cap_ > 0) {
+                data_ = new char[s.cap_];
+                memcpy(data_, s.data_, s.size_);
+                size_ = s.size_;
+                cap_ = s.cap_;
+            } else {
+                data_ = s.data_;
+                size_ = s.size_;
+                cap_ = s.cap_;
+            }
+        }
+        Slice operator=(Slice &s) {
+            if (s.cap_ > 0) {
+                data_ = new char[s.cap_];
+                memcpy(data_, s.data_, s.size_);
+                size_ = s.size_;
+                cap_ = s.cap_;
+            } else {
+                data_ = s.data_;
+                size_ = s.size_;
+                cap_ = s.cap_;
+            }
+        }
+        Slice operator=(Slice s) {
+            if (s.cap_ > 0) {
+                data_ = new char[s.cap_];
+                memcpy(data_, s.data_, s.size_);
+                size_ = s.size_;
+                cap_ = s.cap_;
+            } else {
+                data_ = s.data_;
+                size_ = s.size_;
+                cap_ = s.cap_;
+            }
+        }
+         */
+
 
         ~Slice(){
             if (cap_ > 0) {

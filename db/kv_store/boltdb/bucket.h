@@ -24,8 +24,8 @@ namespace  boltdb {
 
     using pgid = uint64_t ;
     struct bucket {
-        pgid root;
-        uint64_t  sequence;
+        pgid root = 0;
+        uint64_t  sequence = 0;
     };
     const uint32_t bucketHeaderSize = sizeof(bucket);
 
@@ -46,7 +46,7 @@ namespace  boltdb {
 //        bucket bucket_;
 
         std::map<boltdb_key_t , Bucket*> buckets;
-        page *page_;
+        page *page_ = nullptr;
         node *rootNode;
         std::map<pgid, node *> nodes;
         double FillPercent;
@@ -58,7 +58,7 @@ namespace  boltdb {
         bool inlineable();
         int maxInlineBucketSize();
         void free();
-        Slice write();
+        boltdb_key_t write();
         cursor *newCursor();
         void dereference();
 

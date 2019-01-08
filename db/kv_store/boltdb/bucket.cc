@@ -61,10 +61,6 @@ namespace boltdb {
         nodes[id] = n;
         tx->stats.NodeCount++;
         return n;
-
-
-
-
     }
 
     void Bucket::rebalance() {
@@ -141,21 +137,22 @@ namespace boltdb {
             child.second->dereference();
         }
     }
-    Slice Bucket::write() {
+    boltdb_key_t Bucket::write() {
         auto  n = rootNode;
 //        var value = make([]byte, bucketHeaderSize+n.size());
         auto sz = bucketHeaderSize + n->size();
         char *value = new char[sz];
-        Slice slice(value, sz);
+
         // Write a bucket header.
-        Bucket* b = reinterpret_cast<Bucket *>(value);
+        bucket* b = reinterpret_cast<bucket *>(value);
         b->root = root;
         b->sequence = sequence;
 
         // Convert byte slice to a fake page and write the root node.
         page  *p = reinterpret_cast<page *>(&value[bucketHeaderSize]);
         n->write(p);
-
+        boltdb_key_t slice(value, sz);
+        delete [] value;
         return slice;
 
     }
@@ -169,7 +166,7 @@ namespace boltdb {
             // write it inline into the parent bucket's page. Otherwise spill it
             // like a normal bucket and make the parent value a pointer to the page.
 //            var value []byte
-            Slice value;
+            boltdb_key_t value;
             if (child->inlineable()) {
                 child->free();
                 value = child->write();
@@ -181,7 +178,7 @@ namespace boltdb {
 
                 // Update the child bucket header in this bucket.
 //                value = new char[sizeof(bucket)];
-                char *v = value.data();
+                char *v = const_cast<char *>(value.data());
                 bucket *b = reinterpret_cast<bucket*>(&v[0]);
                 b->root = child->root;
                 b->sequence = child->sequence;
@@ -260,13 +257,13 @@ namespace boltdb {
 
 
         // Create empty, inline bucket.
-//        var bucket = Bucket{
-//                bucket:      &bucket{},
-//                rootNode:    &node{isLeaf: true},
-//                FillPercent: DefaultFillPercent,
-//        }
         Bucket *b = new Bucket();
-        Slice v = b->write();
+        b->root = 0;
+        b->sequence = 0;
+        b->rootNode = new node;
+        b->rootNode->isLeaf;
+        b->FillPercent = DefaultFillPercent;
+        boltdb_key_t v = b->write();
 
         c->Node()->put(name, name, v, 0, bucketLeafFlag);
         // Insert into node.
@@ -277,8 +274,11 @@ namespace boltdb {
         // dereference the inline page, if it exists. This will cause the bucket
         // to be treated as a regular, non-inline bucket for the rest of the tx.
         page_ = nullptr;
+        delete c;
+        delete b->rootNode;
+        delete b;
 
-        return XXStatus<Bucket*> (b->GetBucket(name), Status::Ok());
+        return XXStatus<Bucket*> (GetBucket(name), Status::Ok());
     }
 
 
@@ -287,9 +287,6 @@ namespace boltdb {
             if (buckets.find(key) != buckets.end()){
                 return buckets[key];
             }
-//            if child := buckets[string(name)]; child != nil {
-//                        return child
-//            }
         }
 
         // Move cursor to key.
@@ -306,7 +303,7 @@ namespace boltdb {
         if (buckets.empty()) {
             buckets[key] = child;
         }
-
+        delete c;
         return child;
     }
 
@@ -320,24 +317,25 @@ namespace boltdb {
         ;
         bool unaligned = (reinterpret_cast<uintptr_t >(value.data()) & 3) != 0;
         if (unaligned) {
-            value  = value.AlignedClone(value);
+//            value  = value.AlignedClone(value);
+            value = value;
         }
 
         // If this is a writable transaction then we need to copy the bucket entry.
         // Read-only transactions can point directly at the mmap entry.
         if (tx->writable && !unaligned) {
-            bucket *b = reinterpret_cast<bucket *> (value.data());
+            bucket *b = reinterpret_cast<bucket *>(const_cast<char *> (value.data()));
             child->root = b->root;
             child->sequence = b->sequence;
         } else {
-            bucket *b = reinterpret_cast<bucket *> (value.data());
+            bucket *b = reinterpret_cast<bucket *> (const_cast<char *>(value.data()));
             child->root = b->root;
             child->sequence = b->sequence;
         }
 
         // Save a reference to the inline page if the bucket is inline.
         if (child->root == 0) {
-            child->page_ = reinterpret_cast<page *>(&(value.data()[bucketHeaderSize]));
+            child->page_ = reinterpret_cast<page *>(const_cast<char *>(&(value.data()[bucketHeaderSize])));
         }
 
         return child;
@@ -348,12 +346,12 @@ namespace boltdb {
 
         // Return nil if this is a bucket.
         if ((std::get<2>(key_value_flags) & bucketLeafFlag) != 0) {
-            return Slice();
+            return nil;
         }
 
         // If our target node isn't the same key as what's passed in then return nil.
         if (key != std::get<0>(key_value_flags)) {
-            return Slice();
+            return nil;
         }
         return std::get<1>(key_value_flags);
     }

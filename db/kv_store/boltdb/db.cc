@@ -344,8 +344,10 @@ namespace boltdb {
             defer_func(t);
             return err;
         }
+
+        err = t->Commit();
         defer_func(t);
-        return t->Commit();
+        return err;
     }
 
 
@@ -554,7 +556,7 @@ namespace boltdb {
         // Create a transaction associated with the database.
 //        t := &Tx{writable: true}
         Tx *t = new Tx();
-        t->writable = false;
+        t->writable = true;
         t->init(this);
         rwtx = t;
 

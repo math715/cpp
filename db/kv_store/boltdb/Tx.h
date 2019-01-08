@@ -18,11 +18,9 @@ namespace boltdb {
         int NodeDeref;
         int Rebalance;
         std::chrono::milliseconds RebalanceTime;
-
         int Split;
         int Spill;
         std::chrono::milliseconds SpillTime;
-
         int Write;
         std::chrono::milliseconds WriteTime;
 
