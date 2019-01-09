@@ -101,6 +101,7 @@ namespace boltdb {
     }
 
     bool elemRef::isLeaf() {
+
             if (node_ != nullptr) {
                     return node_->isLeaf;
             }
