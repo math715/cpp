@@ -97,10 +97,52 @@ namespace boltdb {
         std::pair<T, S> xx_status;
 
     };
+    extern const char *ErrDatabaseNotOpen ;
+    extern const char *ErrDatabaseOpen ;
+    extern const char *ErrInvalid ;
+    extern const char *ErrVersionMismatch ;
+    extern const char *ErrChecksum ;
+    extern const char *ErrTimeout ;
+
+    // ErrTxNotWritable is returned when performing a write operation on a
+    // read-only transaction.
+    extern const char *ErrTxNotWritable ;
+
+    // ErrTxClosed is returned when committing or rolling back a transaction
+    // that has already been committed or rolled back.
+    extern const char *ErrTxClosed ;
+
+    // ErrDatabaseReadOnly is returned when a mutating transaction is started on a
+    // read-only database.
+    extern const char *ErrDatabaseReadOnly;
 
 
+    // ErrBucketNotFound is returned when trying to access a bucket that has
+    // not been created yet.
+    extern const char *ErrBucketNotFound ;
 
+    // ErrBucketExists is returned when creating a bucket that already exists.
+    extern const char *ErrBucketExists ;
+
+    // ErrBucketNameRequired is returned when creating a bucket with a blank name.
+    extern const char *ErrBucketNameRequired ;
+
+    // ErrKeyRequired is returned when inserting a zero-length key.
+    extern const char *ErrKeyRequired ;
+
+    // ErrKeyTooLarge is returned when inserting a key that is larger than MaxKeySize.
+    extern const char *ErrKeyTooLarge ;
+
+    // ErrValueTooLarge is returned when inserting a value that is larger than MaxValueSize.
+    extern const char *ErrValueTooLarge ;
+
+    // ErrIncompatibleValue is returned when trying create or delete a bucket
+    // on an existing non-bucket key or when trying to create or delete a
+    // non-bucket key on an existing bucket key.
+    extern const char *ErrIncompatibleValue ;
 }
+
+
 /*
 
 // These errors can be returned when opening or calling methods on a DB.

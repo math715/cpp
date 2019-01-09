@@ -152,7 +152,7 @@ namespace  boltdb {
     }
 
     void node::write(boltdb::page *p) {
-        p->id = 0;
+//        p->id = 0;
         p->overflow = 0;
         p->flags = 0;
         if (isLeaf) {
@@ -379,6 +379,7 @@ namespace  boltdb {
             children.clear();
             return parent->spill();
         }
+        return Status::Ok();
     }
 
 

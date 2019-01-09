@@ -11,7 +11,7 @@
 
 namespace boltdb {
     std::pair<boltdb_key_t, boltdb_key_t> cursor::First() {
-        assert(bucket->tx->db_ == nullptr);
+        assert(bucket->tx->db_ != nullptr);
         stack.clear();
         auto elem = bucket->pageNode(bucket->root);
         elemRef er(elem.first, elem.second, 0);
@@ -231,7 +231,9 @@ namespace boltdb {
     }
 
     void cursor::nsearch(boltdb_key_t key) {
-        auto &e = stack[stack.size()-1];
+//        auto &e = stack[stack.size()-1];
+        assert(!stack.empty());
+        auto &e = stack.back();
         auto p = e.page_;
         auto n = e.node_;
 

@@ -141,7 +141,7 @@ namespace boltdb {
         auto  n = rootNode;
 //        var value = make([]byte, bucketHeaderSize+n.size());
         auto sz = bucketHeaderSize + n->size();
-        char *value = new char[sz];
+        char *value = new char[sz] {0};
 
         // Write a bucket header.
         bucket* b = reinterpret_cast<bucket *>(value);
@@ -205,6 +205,7 @@ namespace boltdb {
                 assert(true);
             }
             c->Node()->put(name, name, value, 0, bucketLeafFlag);
+            delete c;
 //            c.node().put([]byte(name), []byte(name), value, 0, bucketLeafFlag)
         }
 
@@ -342,7 +343,8 @@ namespace boltdb {
     }
 
     boltdb_key_t Bucket::Get(boltdb::boltdb_key_t &key) {
-        auto key_value_flags = newCursor()->seek(key);
+        auto c = newCursor();
+        auto key_value_flags = c->seek(key);
 
         // Return nil if this is a bucket.
         if ((std::get<2>(key_value_flags) & bucketLeafFlag) != 0) {
@@ -356,7 +358,123 @@ namespace boltdb {
         return std::get<1>(key_value_flags);
     }
 
-    Status Bucket::Put(boltdb::boltdb_key_t &key, boltdb::boltdb_key_t &value) {
 
+    Status Bucket::Put(boltdb_key_t key, boltdb_key_t value) {
+        if (tx->db_ == nullptr) {
+            return Status::TxError(ErrTxClosed);
+        } else if (!Writeable()) {
+            return Status::TxError(ErrTxNotWritable);
+        } else if (key.size() == 0) {
+            return Status::TxError(ErrKeyRequired);
+        } else if (key.size() > MaxKeySize) {
+            return Status::TxError(ErrKeyTooLarge);
+        } else if (value.size() > MaxValueSize) {
+            return Status::TxError(ErrValueTooLarge);
+        }
+
+        // Move cursor to correct position.
+        auto c = newCursor();
+        auto kvf = c->seek(key);
+
+        // Return an error if there is an existing key with a bucket value.
+        if ( (std::get<0>(kvf) == key)
+                && ((std::get<2>(kvf)&bucketLeafFlag) != 0 )) {
+            return Status::TxError(ErrIncompatibleValue);
+        }
+
+        // Insert into node.
+        c->Node()->put(key, key, value, 0, 0);
+
+        return Status::Ok();
+
+    }
+
+
+    Status Bucket::Delete(boltdb::boltdb_key_t key) {
+        if (tx->db_ == nullptr) {
+            return Status::TxError(ErrTxClosed);
+        } else if (!Writeable()) {
+            return Status::TxError(ErrTxNotWritable);
+        }
+
+        // Move cursor to correct position.
+        auto c = newCursor();
+        auto kvf = c->seek(key);
+
+        // Return an error if there is already existing bucket value.
+        if ((std::get<2>(kvf) & bucketLeafFlag) != 0) {
+            return Status::TxError(ErrIncompatibleValue);
+        }
+
+        // Delete the node if we have a matching key.
+        c->Node()->del(key);
+
+        return Status::Ok();
+
+    }
+
+    Status Bucket::DeleteBucket(boltdb::boltdb_key_t key) {
+        if (tx->db_ == nullptr) {
+            return Status::TxError(ErrTxClosed);
+        } else if (!Writeable()) {
+            return Status::TxError(ErrTxNotWritable);
+        }
+
+        // Move cursor to correct position.
+        auto c = newCursor();
+        auto kvf = c->seek(key);
+
+        // Return an error if bucket doesn't exist or is not a bucket.
+        if (std::get<0>(kvf) != key ) {
+            return Status::BucketError(ErrBucketNotFound);
+        } else if ((std::get<2>(kvf) & bucketLeafFlag) == 0 ){
+            return Status::BucketError(ErrIncompatibleValue);
+        }
+
+        // Recursively delete all child buckets.
+        auto child = GetBucket(key);
+        auto delfn = [&](boltdb_key_t k, boltdb_key_t v)->Status {
+            if (v.empty()) {
+                auto err = child->DeleteBucket(k);
+                if (!err.ok()) {
+                    return err;
+                }
+            }
+        };
+        auto err = child->ForEach(delfn);
+
+        if (!err.ok()) {
+                    return err;
+         }
+
+        // Remove cached copy.
+        buckets.erase(key);
+
+        // Release all bucket pages to freelist.
+        child->nodes.clear();
+        child->rootNode = nullptr;
+        child->free();
+
+        // Delete the node if we have a matching key.
+        c->Node()->del(key);
+
+        return Status::Ok();
+    }
+
+    Status Bucket::ForEach(std::function<Status(boltdb_key_t, boltdb_key_t)> fn) {
+        if (tx->db_ == nullptr) {
+            return Status::TxError(ErrTxClosed);
+        }
+        auto c = newCursor();
+        for ( auto kv= c->First(); !kv.first.empty(); kv = c->Next()) {
+            auto err = fn(kv.first, kv.second);
+            if (!err.ok()) {
+                return err;
+            }
+        }
+        return Status::Ok();
+    }
+    inline  bool Bucket::Writeable() {
+        return tx->writable;
     }
 }

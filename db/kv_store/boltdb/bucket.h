@@ -8,6 +8,7 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <functional>
 #include "error.h"
 #include "config.h"
 
@@ -47,7 +48,7 @@ namespace  boltdb {
 
         std::map<boltdb_key_t , Bucket*> buckets;
         page *page_ = nullptr;
-        node *rootNode;
+        node *rootNode = nullptr;
         std::map<pgid, node *> nodes;
         double FillPercent;
         std::pair<page *, node *>  pageNode(pgid id);
@@ -67,7 +68,12 @@ namespace  boltdb {
         Bucket *openBucket(boltdb_key_t &value);
 
         boltdb_key_t Get(boltdb_key_t &key);
-        Status Put(boltdb_key_t &key, boltdb_key_t &value);
+        Status Put(boltdb_key_t key, boltdb_key_t value);
+        Status Delete(boltdb_key_t key);
+        Status DeleteBucket(boltdb_key_t key);
+
+        Status ForEach(std::function<Status(boltdb_key_t, boltdb_key_t)> fn);
+        bool Writeable();
     };
 
 

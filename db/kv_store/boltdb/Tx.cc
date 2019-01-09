@@ -8,6 +8,7 @@
 #include "port.h"
 #include <algorithm>
 #include <cassert>
+#include <cstring>
 #include "freelist.h"
 
 namespace  boltdb {
@@ -97,7 +98,7 @@ namespace  boltdb {
         }
 
         // Ignore file sync if flag is set on DB.
-        if (db_->NoSync || IgnoreNoSync) {
+        if (!db_->NoSync || IgnoreNoSync) {
 //            auto err = fdatasync(db_);
             auto err = db_->file->Fdatasync();
             if (!err.ok()) {
@@ -109,17 +110,18 @@ namespace  boltdb {
         for (auto p : pages) {
                 // Ignore page sizes over 1 page.
                 // These are allocated using make() instead of the page pool.
-                if (int(p.second->overflow) != 0 ) {
+                if (p.second->overflow != 0 ) {
                     continue;
+                } else {
+                    char *buf = reinterpret_cast<char *>(p.second);
+                    memset(buf, 0, db_->pageSize);
+                    db_->pagePool->put(buf);
                 }
-                char *buf = reinterpret_cast<char *>(p.second);
+
 //                buf := (*[maxAllocSize]byte)(unsafe.Pointer(p))[:tx.db.pageSize]
 
                 // See https://go.googlesource.com/go/+/f03c9202c43e0abb130669852082117ca50aa9b1
-                for (int i = 0; i < db_->pageSize; ++i){
-                    buf[i] = 0;
-                }
-                db_->pagePool->put(buf);
+
         }
 
         return Status::Ok();
@@ -128,7 +130,7 @@ namespace  boltdb {
 
     Status Tx::writeMeta() {
 //        buf := make([]byte, tx.db.pageSize)
-        char *buf = new char[db_->pageSize];
+        char *buf = new char[db_->pageSize]{0};
         auto p = db_->pageInBuffer(buf, 0);
         meta_->write(p);
 
@@ -295,7 +297,7 @@ namespace  boltdb {
 
     void Tx::close() {
         if (db_ == nullptr) {
-                    return;
+            return;
         }
         if (writable) {
             // Grab freelist stats.
@@ -304,11 +306,12 @@ namespace  boltdb {
             auto freelistAlloc = db_->freelist_->size();
 
             // Remove transaction ref & writer lock.
+//            delete db_->rwtx;
             db_->rwtx = nullptr;
             db_->rwlock.Unlock();
 
             // Merge statistics.
-            db_-> statlock.Lock();
+            db_->statlock.Lock();
             // TODO
             /*
             db.stats.FreePageN = freelistFreeN
@@ -317,7 +320,7 @@ namespace  boltdb {
             tx.db.stats.FreelistInuse = freelistAlloc
             tx.db.stats.TxStats.add(&tx.stats)
              */
-            db_-> statlock.Unlock();;
+            db_->statlock.Unlock();
         } else {
             db_->removeTx(nullptr);
         }
@@ -336,5 +339,9 @@ namespace  boltdb {
 
     Bucket* Tx::GetBucket(boltdb::boltdb_key_t &key) {
         return root.GetBucket(key);
+    }
+
+    cursor* Tx::newCursor() {
+        return root.newCursor();
     }
 }

@@ -6,9 +6,9 @@
 #include <vector>
 #include <mutex>
 #include <functional>
-#include "bucket.h"
 #include "error.h"
 #include "port.h"
+#include "bucket.h"
 
 namespace boltdb {
     const uint64_t maxMmapStep = 1<<30;
@@ -74,7 +74,7 @@ namespace boltdb {
     class DB {
         
     public:
-        PagePool *pagePool;
+        PagePool *pagePool = nullptr;
         std::string path;
         bool   StrictMode;
         bool 	   NoSync;
@@ -135,7 +135,7 @@ namespace boltdb {
         Status Mmap( int minsz);
         std::pair<int, Status> MmapSize(int size);
 
-    private:
+//    private:
         std::pair<Tx *, Status> Begin(bool writeable);
         std::pair<Tx *, Status> BeginTx() ;
         std::pair<Tx *, Status> BeginRWTx();

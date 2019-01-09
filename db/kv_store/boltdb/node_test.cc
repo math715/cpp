@@ -107,7 +107,7 @@ namespace boltdb {
         n->put(oldkey, newkey, value, 0, 0);
 
         // Write it to a page.
-        char buf[4096];
+        char buf[4096] = {0};
         page *p = reinterpret_cast<page *>(&buf[0]);
         n->write(p);
 
@@ -225,7 +225,6 @@ namespace boltdb {
         n->put(oldkey, newkey, value, 0, 0);
         oldkey = "00000005", newkey = "00000005", value ="0123456701234567";
         n->put(oldkey, newkey, value, 0, 0);
-
 
         n->split(4096);
         ASSERT_TRUE(n->parent == nullptr);

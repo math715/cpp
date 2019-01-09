@@ -72,7 +72,7 @@ namespace boltdb {
     }
 
     int freelist::count() {
-        return ids_.size() + pending.size();
+        return free_count() + pending_count();
     }
     static void  mergepgids(std::vector<pgid> &dst, std::vector<boltdb::pgid> &a, std::vector<boltdb::pgid> &b) {
         if (dst.size() < a.size()+b.size()) {

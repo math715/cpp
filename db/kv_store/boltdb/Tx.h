@@ -53,6 +53,7 @@ namespace boltdb {
         void close();
         Status Rollback();
         void forEachPage(pgid id, int depth, std::function<void(page *, int)> fn);
+        cursor* newCursor();
 
 
 

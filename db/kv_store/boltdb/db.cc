@@ -60,7 +60,11 @@ namespace boltdb {
         db->file = new File(path);
         auto status = db->file->Open(path.c_str(),  flag|O_CREAT, 0666);
         if (!status.ok()) {
+            db->file->Close();
             return status;
+        }
+        if (!pops->ReadOnly) {
+            db->file->Flock();
         }
 
         int64_t sz = db->file->fileSize();
@@ -83,6 +87,10 @@ namespace boltdb {
             }
             db->pageSize = 0x1000;
         }
+
+        // Initialize page pool
+        db->pagePool = new PagePool(db->pageSize);
+
         auto err = db->Mmap(pops->InitialMmapSize);
         if (!err.ok()){
             db->close();
@@ -215,7 +223,8 @@ namespace boltdb {
     std::pair<page *, Status> DB::allocate(int count) {
         char *buf;
         if (count == 1) {
-            buf = new char[pageSize];
+//            buf = new char[pageSize];
+            buf = pagePool->get();
         } else {
             buf = new char[count*pageSize];
         }
@@ -358,6 +367,7 @@ namespace boltdb {
 //        info, err := db.file.Stat()
         auto size = file->fileSize();
         if (size < pageSize * 2){
+            mmaplock.Unlock();
             return Status::IOError("file size too small");
         }
 //        if err != nil {
@@ -373,6 +383,7 @@ namespace boltdb {
         }
         auto serr = MmapSize(size);
         if (!serr.second.ok())  {
+            mmaplock.Unlock();
             return serr.second;
         }
 
@@ -385,13 +396,15 @@ namespace boltdb {
 //        auto err = boltdb::Munmap(this);
         auto err = Munmap();
         if (!err.ok()) {
+            mmaplock.Unlock();
             return err;
         }
 
         // Memory-map the data file as a byte slice.
         err = File::Mmap(this, file->fd(), serr.first);
         if (!err.ok()) {
-                return err;
+            mmaplock.Unlock();
+            return err;
         }
 
         // Save references to the meta pages.
@@ -404,9 +417,10 @@ namespace boltdb {
         auto err0 = meta0->Validate();
         auto err1 = meta1->Validate();
         if (!err0.ok() || !err1.ok()) {
-                    return err0;
+            mmaplock.Unlock();
+            return err0;
         }
-
+        mmaplock.Unlock();
         return Status::Ok();
     }
 
@@ -548,8 +562,8 @@ namespace boltdb {
 
         // Exit if the database is not open yet.
         if (!opened) {
-            rwlock.Unlock();
             metalock.Unlock();
+            rwlock.Unlock();
             return std::make_pair(nullptr, Status::IOError("database not open"));
         }
 
@@ -570,7 +584,7 @@ namespace boltdb {
         if (minid > 0) {
             freelist_->release(minid - 1);
         }
-
+        metalock.Unlock();
         return std::make_pair(t, Status::Ok());
 
     }
@@ -625,9 +639,9 @@ namespace boltdb {
         mmaplock.RLock();
 //        defer db.mmaplock.RUnlock()
         auto err = close();
-        rwlock.Unlock();
-        metalock.Unlock();
         mmaplock.RUnlock();
+        metalock.Unlock();
+        rwlock.Unlock();
         return err;
     }
 

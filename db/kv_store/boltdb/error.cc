@@ -69,5 +69,50 @@ namespace boltdb {
         memcpy(result, state, size + 5);
         return result;
         }
+
+
+    const char *ErrDatabaseNotOpen = "database not open";
+    const char *ErrDatabaseOpen = "database already open";
+    const char *ErrInvalid = "invalid database";
+    const char *ErrVersionMismatch = "version mismatch";
+    const char *ErrChecksum = "checksum error";
+    const char *ErrTimeout = "timeout";
+
+    // ErrTxNotWritable is returned when performing a write operation on a
+    // read-only transaction.
+    const char *ErrTxNotWritable = "tx not writable";
+
+    // ErrTxClosed is returned when committing or rolling back a transaction
+    // that has already been committed or rolled back.
+    const char *ErrTxClosed = "tx closed";
+
+    // ErrDatabaseReadOnly is returned when a mutating transaction is started on a
+    // read-only database.
+    const char *ErrDatabaseReadOnly = "database is in read-only mode";
+
+
+    // ErrBucketNotFound is returned when trying to access a bucket that has
+    // not been created yet.
+    const char *ErrBucketNotFound = "bucket not found";
+
+    // ErrBucketExists is returned when creating a bucket that already exists.
+    const char *ErrBucketExists = "bucket already exists";
+
+    // ErrBucketNameRequired is returned when creating a bucket with a blank name.
+    const char *ErrBucketNameRequired = "bucket name required";
+
+    // ErrKeyRequired is returned when inserting a zero-length key.
+    const char *ErrKeyRequired = "key required";
+
+    // ErrKeyTooLarge is returned when inserting a key that is larger than MaxKeySize.
+    const char *ErrKeyTooLarge = "key too large";
+
+    // ErrValueTooLarge is returned when inserting a value that is larger than MaxValueSize.
+    const char *ErrValueTooLarge = "value too large";
+
+    // ErrIncompatibleValue is returned when trying create or delete a bucket
+    // on an existing non-bucket key or when trying to create or delete a
+    // non-bucket key on an existing bucket key.
+    const char *ErrIncompatibleValue = "incompatible value";
     
 } // blotdb

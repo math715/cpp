@@ -48,6 +48,7 @@ namespace boltdb {
         }
         size_t size = fwrite(buf, sizeof(char), sz, file);
         assert(size == sz);
+        return Status::Ok();
 
     }
 
