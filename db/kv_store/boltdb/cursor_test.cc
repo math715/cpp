@@ -20,7 +20,7 @@ namespace boltdb {
             assert(cb == bucketstatus.value());
             return Status::Ok();
         };
-//        auto status = db->Update(fn);
+        auto status = db->Update(fn);
 //        ASSERT_TRUE(status.ok());
 
 //        db->MustClose();
