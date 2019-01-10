@@ -121,6 +121,7 @@ namespace boltdb {
         static Status open( std::string path, Options *ops, DB **pDB) ;
         Status close();
         Status Close();
+        void MustClose();
         Status Munmap();
         Status init();
         page * pageInBuffer(char *buf, pgid id);

@@ -110,6 +110,10 @@ namespace boltdb {
         flock(fd_, LOCK_UN);
     }
 
+    void File::Remove() {
+        remove(path.c_str());
+    }
+
 
     char* PagePool::get() {
         std::unique_lock<std::mutex> lock;

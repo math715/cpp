@@ -161,9 +161,9 @@ namespace  boltdb {
     Status Tx::Commit() {
         assert(!managed);
         if (db_ == nullptr) {
-            return Status::IOError("tx closed");
+            return Status::TxError(ErrTxClosed);
         } else if (!writable) {
-            return Status::IOError("tx not writable");
+            return Status::TxError(ErrTxNotWritable);
         }
 
         // TODO(benbjohnson): Use vectorized I/O to write out dirty pages.

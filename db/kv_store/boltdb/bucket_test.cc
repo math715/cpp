@@ -8,6 +8,7 @@
 
 namespace  boltdb {
     DB * MustOpenDB();
+    // Ensure that a bucket that gets a non-existent key returns nil.
     TEST(BUCKETSET, GetNonExistent) {
         auto db =  MustOpenDB();
         auto fn = [](Tx *tx) -> Status {
@@ -21,7 +22,8 @@ namespace  boltdb {
         };
         auto err = db->Update(fn);
         EXPECT_TRUE(err.ok());
-        db->Close();
+        db->MustClose();
+
     }
     TEST(BUCKETSET, Get_FromNode) {
             auto db =  MustOpenDB();
@@ -39,6 +41,25 @@ namespace  boltdb {
             };
             auto err = db->Update(fn);
             EXPECT_TRUE(err.ok());
-            db->Close();
+            db->MustClose();
+
+    }
+
+    // Ensure that a bucket retrieved via Get() returns a nil.
+
+    TEST(BUCKETSET, GetIncompatibleValue) {
+            auto db =  MustOpenDB();
+            auto fn = [](Tx *tx) -> Status {
+                boltdb_key_t  bn("widgets");
+                auto berr = tx->CreateBucket(bn);
+                berr = tx->GetBucket(bn)->CreateBucket("foo");
+                boltdb_key_t  bn1 = "foo";
+                auto v = tx->GetBucket(bn)->Get(bn1);
+                assert(v.empty());
+                return Status::Ok();
+            };
+            auto err = db->Update(fn);
+            EXPECT_TRUE(err.ok());
+            db->MustClose();
     }
 }

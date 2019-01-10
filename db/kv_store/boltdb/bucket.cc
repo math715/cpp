@@ -22,7 +22,7 @@ namespace boltdb {
                 perror("inline bucket non-zero page access(2): %d != 0");
             }
             if (rootNode != nullptr) {
-                        return std::make_pair(nullptr,  rootNode);
+                return std::make_pair(nullptr,  rootNode);
             }
             return std::make_pair(page_, nullptr);
         }
@@ -262,7 +262,7 @@ namespace boltdb {
         b->root = 0;
         b->sequence = 0;
         b->rootNode = new node;
-        b->rootNode->isLeaf;
+        b->rootNode->isLeaf = true;
         b->FillPercent = DefaultFillPercent;
         boltdb_key_t v = b->write();
 

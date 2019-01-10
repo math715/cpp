@@ -26,7 +26,7 @@ namespace boltdb {
 
         // Unmap using the original byte slice.
         //FIXME
-        int err = munmap(db->dataref, strlen(db->dataref));
+        int err = munmap(db->dataref, db->datasz);
         if (err != 0){
             return Status::IOError("munmap ");
         }
@@ -606,7 +606,7 @@ namespace boltdb {
         if (!err.ok() ) {
             return err;
         }
-
+        file->Funlock();
         file->Close();
         // Close file handles.
 //        if file != nil) {
@@ -625,7 +625,7 @@ namespace boltdb {
 //                    db.file = nil
 //            }
 
-        path = "";
+//        path = "";
         return Status::Ok();
     }
 
@@ -643,6 +643,12 @@ namespace boltdb {
         metalock.Unlock();
         rwlock.Unlock();
         return err;
+    }
+
+
+    void DB::MustClose() {
+        file->Remove();
+        Close();
     }
 
     Status DB::Munmap() {

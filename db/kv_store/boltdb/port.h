@@ -62,6 +62,7 @@ namespace boltdb {
         void Close();
         void Funlock();
         void Flock();
+        void Remove();
         static Status Mmap(boltdb::DB *db, int fd, int sz);
 
     private:
