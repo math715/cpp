@@ -178,4 +178,20 @@ namespace boltdb {
         int index = it - inodes.begin();
         return index;
     }
+
+    int Sort::Search(int count, std::function<bool(int)> f) {
+        int i = 0, j = count;
+        while (i < j) {
+                int h = int(uint(i+j) >> 1); // avoid overflow when computing h
+                // i â‰¤ h < j
+                if (!f(h) ) {
+                    i = h + 1 ;// preserves f(i-1) == false
+                } else {
+                    j = h ;// preserves f(j) == true
+                }
+        }
+        // i == j, f(i-1) == false, and f(j) (= f(i)) == true  =>  answer is i.
+        return i;
+    }
+
 }

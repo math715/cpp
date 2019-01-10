@@ -60,6 +60,7 @@ namespace  boltdb {
         for (auto p : pages) {
             pgs.push_back(p.second);
         }
+        pages.clear();
         sort(pgs.begin(), pgs.end());
         for (auto p : pgs) {
             auto size = (int(p->overflow) + 1) * db_->pageSize;

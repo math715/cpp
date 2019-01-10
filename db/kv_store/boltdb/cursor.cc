@@ -254,15 +254,18 @@ namespace boltdb {
         // If we have a page then search its leaf elements.
         //TODO b search
         auto inodes = p->LeafPageElements();
-        int index = p->count;
-        for (int i = 0; i < p->count; ++i) {
-            std::cerr << inodes[i].key() << std::endl;
-            if (inodes[i].key() == key) {
-                index = i;
-                break;
-            }
-        }
-        e.index = index;
+        e.index = Sort::Search(p->count, [&](int i)->bool {
+            return inodes[i].key() >= key;
+        });
+//        e.index = Sort::Search(inodes, p->count, key);
+//        int index = p->count;
+//        for (int i = 0; i < p->count; ++i) {
+//            if (inodes[i].key() == key) {
+//                index = i;
+//                break;
+//            }
+//        }
+//        e.index = index;
 
     }
 

@@ -36,6 +36,29 @@ namespace  boltdb {
 
     const double DefaultFillPercent = 0.5;
 
+    struct BucketStats  {
+        // Page count statistics.
+        int BranchPageN;     // number of logical branch pages
+        int BranchOverflowN; // number of physical branch overflow pages
+        int LeafPageN;       // number of logical leaf pages
+        int LeafOverflowN;   // number of physical leaf overflow pages
+
+        // Tree statistics.
+        int KeyN;           // number of keys/value pairs
+        int Depth;         // number of levels in B+tree
+
+        // Page size utilization.
+        int BranchAlloc;  // bytes allocated for physical branch pages
+        int BranchInuse;  // bytes actually used for branch data
+        int LeafAlloc;    // bytes allocated for physical leaf pages
+        int LeafInuse;    // bytes actually used for leaf data
+
+        // Bucket statistics
+        int BucketN ;           // total number of buckets including the top bucket
+        int InlineBucketN;      // total number on inlined buckets
+        int InlineBucketInuse;  // bytes used for inlined buckets (also accounted for in LeafInuse)
+    };
+
     struct cursor;
     struct Bucket : public bucket  {
     public:
@@ -74,6 +97,7 @@ namespace  boltdb {
 
         Status ForEach(std::function<Status(boltdb_key_t, boltdb_key_t)> fn);
         bool Writeable();
+        BucketStats Stats();
     };
 
 

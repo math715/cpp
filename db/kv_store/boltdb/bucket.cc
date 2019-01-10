@@ -178,10 +178,12 @@ namespace boltdb {
 
                 // Update the child bucket header in this bucket.
 //                value = new char[sizeof(bucket)];
-                char *v = const_cast<char *>(value.data());
+                char *v = new char[sizeof(bucket)];
+//                char *v = const_cast<char *>(value.data());
                 bucket *b = reinterpret_cast<bucket*>(&v[0]);
                 b->root = child->root;
                 b->sequence = child->sequence;
+                value = boltdb_key_t(v, sizeof(bucket));
             }
 
             // Skip writing the bucket if there are no materialized nodes.
@@ -476,5 +478,10 @@ namespace boltdb {
     }
     inline  bool Bucket::Writeable() {
         return tx->writable;
+    }
+
+    BucketStats Bucket::Stats() {
+
+
     }
 }

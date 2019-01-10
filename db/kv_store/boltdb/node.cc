@@ -171,13 +171,13 @@ namespace  boltdb {
         for (int i = 0; i < p->count; ++i) {
             if (isLeaf) {
                 auto elem = p->LeafPageElement(uint16_t(i));
-                elem->pos = uint32_t (reinterpret_cast<uint32_t *>(&(buf[0])) - reinterpret_cast<uint32_t *>(elem));
+                elem->pos = uint32_t (reinterpret_cast<uintptr_t>(&(buf[0])) - reinterpret_cast<uintptr_t>(elem));
                 elem->flags = inodes[i]->flags;
                 elem->ksize = inodes[i]->key.size();
                 elem->vsize = inodes[i]->value.size();
             } else {
                 auto elem = p->BranchPageElement(uint16_t(i));
-                elem->pos = uint32_t(reinterpret_cast<uint32_t *>(&buf[0]) - reinterpret_cast<uint32_t *>(elem));
+                elem->pos = uint32_t(reinterpret_cast<uintptr_t>(&buf[0]) - reinterpret_cast<uintptr_t>(elem));
                 elem->ksize = inodes[i]->key.size();
                 elem->pgid_ = inodes[i]->pgid_;
             }
