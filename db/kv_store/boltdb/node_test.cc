@@ -135,7 +135,7 @@ namespace boltdb {
     }
 
 
-    TEST(NodeTEST, Split) {
+    TEST(NodeTest, Split) {
         node *n = new node();
         n->isLeaf = true;
         n->bucket = new Bucket();
@@ -203,7 +203,7 @@ namespace boltdb {
 
     }
 
-    TEST(NodeTEST, SplitSinglePage) {
+    TEST(NodeTest, SplitSinglePage) {
         node *n = new node();
         n->isLeaf = true;
         n->bucket = new Bucket();

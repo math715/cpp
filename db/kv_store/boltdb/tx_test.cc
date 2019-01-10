@@ -23,7 +23,7 @@ namespace boltdb {
         EXPECT_TRUE(status.ok());
         status = tx->Commit();
         EXPECT_TRUE(!status.ok());
-        db->Close();
+        db->MustClose();
     }
 
     TEST(TXTEST, RollbackErrTxClosed) {
@@ -35,7 +35,7 @@ namespace boltdb {
             EXPECT_TRUE(err.ok());
             err = tx->Rollback();
             EXPECT_TRUE(!err.ok());
-            db->Close();
+            db->MustClose();
     }
 
     TEST(TXTEST, CommitErrTxNotWritable) {
@@ -44,7 +44,7 @@ namespace boltdb {
             EXPECT_TRUE(txstatus.second.ok());
             auto err = txstatus.first->Commit();
             EXPECT_TRUE(!err.ok());
-            db->Close();
+            db->MustClose();
     }
     TEST(TXTEST, Cursor) {
             auto db = MustOpenDB();
@@ -75,7 +75,7 @@ namespace boltdb {
 
             auto err = db->Update(fn);
             EXPECT_TRUE(err.ok());
-            db->Close();
+            db->MustClose();
     }
 
 

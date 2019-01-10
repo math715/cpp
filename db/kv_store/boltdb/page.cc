@@ -13,7 +13,7 @@ namespace boltdb {
 
 
     boltdb_key_t branchPageElement::key() {
-        char *buf = reinterpret_cast<char*>(&(this->pos));
+        char *buf = reinterpret_cast<char*>(this);
         buf = buf + pos;
         boltdb_key_t key(buf, ksize);
         return key;

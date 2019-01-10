@@ -3,6 +3,7 @@
 //
 
 #include <cassert>
+#include <iostream>
 #include "cursor.h"
 #include "bucket.h"
 #include "Tx.h"
@@ -86,7 +87,7 @@ namespace boltdb {
 
 
 
-    std::pair<boltdb_key_t, boltdb_key_t> cursor::Seek(boltdb_key_t &key) {
+    std::pair<boltdb_key_t, boltdb_key_t> cursor::Seek(boltdb_key_t key) {
         auto kv = seek(key);
         auto ref = stack.back();
         if (ref.index >= ref.count()) {
@@ -255,6 +256,7 @@ namespace boltdb {
         auto inodes = p->LeafPageElements();
         int index = p->count;
         for (int i = 0; i < p->count; ++i) {
+            std::cerr << inodes[i].key() << std::endl;
             if (inodes[i].key() == key) {
                 index = i;
                 break;

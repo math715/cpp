@@ -28,7 +28,7 @@ namespace boltdb {
         std::pair<boltdb_key_t, boltdb_key_t> Last();
         std::pair<boltdb_key_t, boltdb_key_t> Next();
         std::pair<boltdb_key_t, boltdb_key_t> Prev();
-        std::pair<boltdb_key_t, boltdb_key_t> Seek(boltdb_key_t &key);
+        std::pair<boltdb_key_t, boltdb_key_t> Seek(boltdb_key_t key);
         void first();
         void last();
 

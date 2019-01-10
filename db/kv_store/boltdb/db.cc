@@ -526,6 +526,7 @@ namespace boltdb {
 
         // Create a transaction associated with the database.
         Tx *t = new Tx();
+        t->writable = false;
         t->init(this);
 
         // Keep track of transaction until it closes.

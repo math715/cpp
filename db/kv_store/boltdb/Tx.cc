@@ -337,7 +337,7 @@ namespace  boltdb {
         return root.CreateBucket(name);
     }
 
-    Bucket* Tx::GetBucket(boltdb::boltdb_key_t &key) {
+    Bucket* Tx::GetBucket(boltdb_key_t key) {
         return root.GetBucket(key);
     }
 

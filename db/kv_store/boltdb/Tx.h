@@ -38,7 +38,7 @@ namespace boltdb {
         Bucket root;
 //        std::pair<Bucket *,
         XXStatus<Bucket *, Status> CreateBucket(boltdb_key_t &name);
-        Bucket *GetBucket(boltdb_key_t &key);
+        Bucket *GetBucket(boltdb_key_t key);
         std::map<pgid, page*> pages;
         TxStats stats;
         int writeFlag;

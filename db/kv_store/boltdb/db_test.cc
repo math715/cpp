@@ -31,21 +31,6 @@ namespace  boltdb {
         }
         return db;
     }
-    class DBTest : public DB {
-    public:
-        Status Close();
-        void MuteClose();
-
-    };
-    Status DBTest::Close() {
-        return DB::Close();
-    }
-    void DBTest::MuteClose() {
-        auto status = Close();
-        if (!status.ok())  {
-            std::cerr << status.ToString() << std::endl;
-        }
-    }
 
     TEST(DBTEST, Open) {
 
