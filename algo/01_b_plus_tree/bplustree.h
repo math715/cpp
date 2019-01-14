@@ -33,7 +33,8 @@ namespace algo {
         int Search( const Key &key, Value *value);
 
 
-        //
+        // true : find key;
+        // false : not find key
         bool Contain(const Key &key);
 
         class Iterator {
@@ -43,6 +44,7 @@ namespace algo {
             BplusNode * Last();
             BplusNode * Prev();
             BplusNode * Next();
+            bool Valid();
             //find the records less or equal key;
             void Seek(const Key &key);
 

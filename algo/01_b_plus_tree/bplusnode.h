@@ -28,7 +28,11 @@ namespace  algo {
         std::vector<BplusNode *> children; // branch node key
         std::vector<BplusRecord> records; // leaf node key value;
         int size(){
-            return records.size();
+            if (isleaf) {
+                return records.size();
+            } else {
+                return children.size();
+            }
         }
 
         // same parent
@@ -65,6 +69,7 @@ namespace  algo {
         int Delete(const Key &key);
 
         void UpdateLevel(int value);
+        void UpdateKey();
     };
 }
 

@@ -33,8 +33,9 @@ namespace algo {
         if (it->key == key){
             records.erase(it);
             this->key = records[0].key;
-        } else {
             return 0;
+        } else {
+            return 1;
         }
     }
 
@@ -51,15 +52,31 @@ namespace algo {
 
     }
 
+    BplusNode* BplusNode::RightNode() {
+        if (parent == nullptr) {
+            return nullptr;
+        }
+        auto index = parent->childIndex(this);
+        if (index < parent->children.size() - 1) {
+            return parent->children[index+1];
+        } else {
+            return nullptr;
+        }
+    }
+
     BplusNode* BplusNode::nextSibling() {
         auto right = RightNode();
         if (right == nullptr) {
-            auto p = parent->RightNode();
-            if (p == nullptr) {
-                return nullptr;
+            if (parent != nullptr) {
+                auto p = parent->RightNode();
+                if (p == nullptr) {
+                    return nullptr;
+                } else {
+                    assert(!p->children.empty());
+                    return p->children[0];
+                }
             } else {
-                assert(!p->children.empty());
-                return p->children[0];
+                return nullptr;
             }
         }
         return right;
@@ -69,12 +86,16 @@ namespace algo {
     BplusNode* BplusNode::prevSibling() {
         auto prev = LeftNode();
         if (prev == nullptr) {
-            auto p = parent->LeftNode();
-            if (p == nullptr) {
-                return nullptr;
+            if (parent != nullptr) {
+                auto p = parent->LeftNode();
+                if (p == nullptr) {
+                    return nullptr;
+                } else {
+                    assert(!p->children.empty());
+                    return p->children.back();
+                }
             } else {
-                assert(!p->children.empty());
-                return p->children.back();
+                return nullptr;
             }
         }
         return prev;
@@ -87,23 +108,7 @@ namespace algo {
         }
         return -1;
     }
-    BplusNode* BplusNode::RightNode() {
-        if (parent == nullptr) {
-            return nullptr;
-        }
-        auto index = parent->childIndex(this);
-        if (index < parent->children.size() - 1) {
 
-        } else {
-            auto p = parent->RightNode();
-            if (p == nullptr) {
-                return nullptr;
-            } else {
-                assert(!p->children.empty());
-                return p->children[0];
-            }
-        }
-    }
 
     int BplusNode::removeIndex(int index) {
         assert(children.size() > index);
@@ -120,25 +125,25 @@ namespace algo {
         right->isleaf = isleaf;
         right->parent = parent;
         if (isleaf) {
-            for (int i = min_key_size + 1; i < records.size(); ++i) {
+            for (int i = min_key_size ; i < records.size(); ++i) {
                 right->records.push_back(records[i]);
             }
             right->key = right->records[0].key;
             next = right;
-            records.erase(records.begin() + min_key_size);
+            records.erase(records.begin() + min_key_size, records.end());
         } else {
-            for (int i = min_key_size + 1; i < children.size(); ++i) {
+            for (int i = min_key_size ; i < children.size(); ++i) {
                 right->children.push_back(children[i]);
             }
             right->key = right->children[0]->key;
-            children.erase(children.begin() + min_key_size);
+            children.erase(children.begin() + min_key_size, children.end());
         }
         if (parent == nullptr) { // root node
             auto p = new BplusNode();
 //            level++;
 //            right->level++;
-            UpdateLevel(0);
-            right->UpdateLevel(0);
+            UpdateLevel(1);
+            right->UpdateLevel(1);
             parent = p;
             right->parent = p;
             p->isleaf = false;
@@ -159,15 +164,18 @@ namespace algo {
 
 
     int BplusNode::InsertNode(algo::BplusNode *node) {
-        int index = 0;
+        int index = children.size();
         for (int i = 0; i < children.size(); ++i) {
             if (children[i]->key > node->key) {
                 index = i;
                 break;
             }
         }
-        assert(index > 0);
+        assert(index >= 0);
+        node->parent = this;
+        node->level = level + 1;
         children.insert(children.begin()+ index, node);
+        key = children[0]->key;
         return children.size();
     }
 
@@ -193,23 +201,36 @@ namespace algo {
         }
     }
 
+    void BplusNode::UpdateKey() {
+        if(isleaf) {
+            key = records[0].key ;
+        } else {
+            key = children[0]->key;
+        }
+        if (parent != nullptr) {
+            parent->UpdateKey();
+        }
+    }
 
     BplusNode * BplusNode::RemoveNode(BplusNode *node, int min_key_size, int max_key_size) {
 //        auto right = RightNode();
         auto m = MergeNode(node, max_key_size);
         if (m != nullptr) {
-            if (m->size() < min_key_size)
             remove(node, min_key_size, max_key_size);
+            if (m->size() < min_key_size) {
+                if (RootNode() != nullptr) {
+                   return RootNode()->RemoveNode(m, min_key_size, max_key_size);
+                }
+            }
+
         } else {
             if (node->size() == 0) {
                 remove(node, min_key_size, max_key_size);
+                return nullptr;
             }
+            return node;
         }
-
-        // delete null node
-        // basecause  this node have no brother and can not merge this sibling node
-
-
+        return m;
 
     }
 
@@ -227,6 +248,10 @@ namespace algo {
                 vs.push_back(child);
             }
             children = vs;
+            key = children[0]->key;
+            if (parent != nullptr) {
+                parent->UpdateKey();
+            }
 //            remove(node);
             return children.size();
         } else  {
@@ -239,6 +264,10 @@ namespace algo {
                 vs.push_back(rec);
             }
             records = vs;
+            key = records[0].key;
+            if (parent != nullptr) {
+                parent->UpdateKey();
+            }
 //            remove(node);
             return records.size();
         }
@@ -248,12 +277,14 @@ namespace algo {
     int BplusNode::MergeRightNode(algo::BplusNode *node) {
         assert(level == node->level);
         if (!isleaf) {
+            assert(!children.empty());
             for (auto child : node->children) {
                 child->parent = parent;
                 children.push_back(child);
             }
             return children.size();
         } else  {
+            assert(!records.empty());
             next = node->next;
             for (auto rec : node->records) {
                 records.push_back(rec);
@@ -301,32 +332,32 @@ namespace algo {
     }
 
     BplusNode * BplusNode::MergeNode(BplusNode *node, int max_key_size) {
-        auto left = LeftNode();
+        auto left = node->LeftNode();
         if (left != nullptr) {
-            if (left->size() + size() < max_key_size) {
-                auto sz = left->MergeRightNode(this);
+            if (left->size() + node->size() < max_key_size) {
+                auto sz = left->MergeRightNode(node);
                 return left;
             }
         }
-        auto right = RightNode();
+        auto right = node->RightNode();
         if (right != nullptr) {
-            if (right->size() + size() < max_key_size) {
-                right->MergeLeftNode(this);
+            if (right->size() + node->size() < max_key_size) {
+                right->MergeLeftNode(node);
                 return right;
             }
         }
         if (right == nullptr && right == nullptr) {
-            auto prev = prevSibling();
+            auto prev = node->prevSibling();
             if (prev != nullptr) {
-                if (prev->size() + size() < max_key_size) {
-                    int sz = prev->MergeRightNode(this);
+                if (prev->size() + node->size() < max_key_size) {
+                    int sz = prev->MergeRightNode(node);
                     return prev;
                 }
             }
-            auto n = nextSibling();
+            auto n = node->nextSibling();
             if (n != nullptr) {
-                if (n->size() + size() < max_key_size) {
-                    int sz = n->MergeLeftNode(this);
+                if (n->size() + node->size() < max_key_size) {
+                    int sz = n->MergeLeftNode(node);
                     return n;
                 }
             }

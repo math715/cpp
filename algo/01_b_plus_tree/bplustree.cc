@@ -55,14 +55,15 @@ namespace algo {
     int BplusTree::Delete(const algo::Key &key) {
         if (rootNode != nullptr) {
             BplusNode *node  = search(key);
-            int ret = node->Delete(key);
-            if ( ret < min_key_size && ret >= 0) {
-                return balance(node);
-            } else if (ret == 0) {
-                return remove(node);
-            } else if (ret == 1) {
+            if (node == nullptr) {
                 return 1;
             }
+            assert(node->isleaf);
+            int ret = node->Delete(key);
+            if (node->size() < min_key_size) {
+                balance(node);
+            }
+            return ret;
         } else {
             return 1;
         }
@@ -93,7 +94,9 @@ namespace algo {
                                            [](const BplusNode *n, const Key &key) {
                                                return n->key < key;
                                            });
-
+                if (it == root->children.end()) {
+                    it--;
+                }
                 if ((*it)->key > key && it != root->children.begin()) {
                     it--;
                 } else if ((*it)->key > key && it == root->children.begin()) {
@@ -117,7 +120,7 @@ namespace algo {
             if (n != nullptr) {
                 rootNode = n->RootNode();
             } else {
-                rootNode == nullptr;
+                rootNode = nullptr;
             }
         }
     }
@@ -167,6 +170,7 @@ namespace algo {
                 assert(node->children[0]);
                 node = node->children[0];
             }
+            node_idx = 0;
             return node_ = node;
         } else {
             return nullptr;
@@ -183,22 +187,80 @@ namespace algo {
                 }
             }
         }
+        return node_;
+    }
+
+    void BplusTree::Iterator::Seek(const algo::Key &key) {
+        auto node = tree_->search(key);
+        if (node != nullptr && node->isleaf) {
+            auto it = std::lower_bound(node->records.begin(), node->records.end(), key, [](const BplusRecord &rec, const Key &key){
+                return rec.key < key;
+            });
+            node_ == node;
+            node_idx = it - node->records.begin();
+        } else {
+            node_ = nullptr;
+            node_idx = -1;
+        }
+    }
+
+    bool BplusTree::Iterator::Valid() {
+        return node_ == nullptr && node_idx < node_->size() && node_idx != -1;
     }
     BplusNode* BplusTree::Iterator::Prev() {
         if (node_ != nullptr) {
             if (node_idx > 0) {
                 node_idx--;
             } else {
-                node_ = node_->LeftNode();
-                if (node_ != nullptr) {
+                auto left = node_->LeftNode();
+                if (left != nullptr) {
+                    node_ = left;
                     assert(node_->size() > 0);
                     node_idx = node_->size() - 1;
                 }
+                auto prev = node_ ->prevSibling();
+                if (prev != nullptr) {
+                    node_ = prev;
+                    assert(node_->size() > 0);
+                    node_idx = node_->size() - 1;
+                }
+                node_  = nullptr;
+                node_idx = -1;
+                return nullptr;
             }
         }
         return node_;
     }
 
+    BplusNode* BplusTree::Iterator::Last() {
+        auto p = tree_->rootNode;
+        while(!p->isleaf) {
+            node_idx = p->children.size() - 1;
+            p = p->children.back();
+        }
+        node_ = p;
+        node_idx = p->records.size() - 1;
+        return node_;
+    }
+
+
+    int BplusTree::Search(const algo::Key &key, algo::Value *value) {
+        auto node = search(key);
+        if (node == nullptr) {
+            return 0;
+        }
+        auto it = std::lower_bound(node->records.begin(), node->records.end(), key, [](const BplusRecord &rec, const Key &key){
+            return rec.key < key;
+        });
+        if (it != node->records.end()){
+            if (it->key == key){
+                *value = it->value;
+                return 1;
+            }
+        }
+        return 0;
+
+    }
 
     void BplusTree::PrintTree() {
         std::queue<BplusNode*> que;
