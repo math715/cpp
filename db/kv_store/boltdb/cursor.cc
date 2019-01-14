@@ -252,7 +252,6 @@ namespace boltdb {
         }
 
         // If we have a page then search its leaf elements.
-        //TODO b search
         auto inodes = p->LeafPageElements();
         e.index = Sort::Search(p->count, [&](int i)->bool {
             return inodes[i].key() >= key;

@@ -25,7 +25,6 @@ namespace boltdb {
         }
 
         // Unmap using the original byte slice.
-        //FIXME
         int err = munmap(db->dataref, db->datasz);
         if (err != 0){
             return Status::IOError("munmap ");
