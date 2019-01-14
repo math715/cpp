@@ -7,34 +7,9 @@
 
 #include <string>
 #include <vector>
-
+#include "bplusnode.h"
 namespace algo {
-    using Key = std::string;
-    using Value = std::string;
 
-    struct BplusRecord {
-        BplusRecord(const Key &k, const Value &v):key(k), value(v){}
-        Key key;
-        Value value;
-    };
-    struct BplusNode {
-        BplusNode() = default;
-        bool isleaf;
-        int index; // parent idx child;
-        int level;
-        BplusNode *parent;
-        BplusNode *next;
-        Key key;
-        std::vector<BplusNode *> children; // branch node key
-        std::vector<BplusRecord> records; // leaf node key value;
-        int size(){
-            return records.size();
-        }
-        BplusNode *LeftNode();
-        BplusNode *RightNode();
-        int Insert(const Key &key, const Value &value);
-        int Delete(const Key &key);
-    };
 
     class BplusTree {
     public:
@@ -84,6 +59,11 @@ namespace algo {
         BplusNode *search(const Key &key);
         int balance(BplusNode *node);
         int remove(BplusNode *node);
+
+        // merge left and right
+        // reqired left + right < max_key_size
+        // return left node ;
+        BplusNode *merge(BplusNode *left, BplusNode *right);
         int total_records_;
         int level_;
         int max_key_size;

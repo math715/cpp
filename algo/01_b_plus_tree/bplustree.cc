@@ -5,71 +5,12 @@
 #include "bplustree.h"
 #include <algorithm>
 #include <cassert>
+#include <queue>
+#include <iostream>
 
 
 namespace algo {
-    int BplusNode::Insert(const algo::Key &key, const algo::Value &value) {
-        auto it = std::lower_bound(records.begin(), records.end(), key, [](const BplusRecord &rec, const Key &key) {
-            return rec.key < key;
-        });
-        if (it->key == key){
-            it->value = value;
-        } else {
-            BplusRecord rec(key, value);
-            records.insert(it, rec);
-        }
-        this->key = records[0].key;
-        return records.size();
-    }
 
-
-    int BplusNode::Delete(const algo::Key &key) {
-        auto it = std::lower_bound(records.begin(), records.end(), key, [](const BplusRecord &rec, const Key &key) {
-            return rec.key < key;
-        });
-        if (it->key == key){
-            records.erase(it);
-            this->key = records[0].key;
-        } else {
-            return 0;
-        }
-    }
-
-    BplusNode* BplusNode::LeftNode() {
-        if (parent == nullptr) {
-            return nullptr;
-        }
-        if (index > 0 ) {
-            return parent->children[index-1];
-        } else {
-              auto p = parent->LeftNode();
-              if (p == nullptr) {
-                  return nullptr;
-              } else {
-                  assert(!p->children.empty());
-                  return p->children[p->children.size() - 1];
-              }
-        }
-
-    }
-
-    BplusNode* BplusNode::RightNode() {
-        if (parent == nullptr) {
-            return nullptr;
-        }
-
-        if (index < parent->children.size() - 1) {
-
-        } else {
-            auto p = parent->RightNode();
-            if (p == nullptr) {
-                return nullptr;
-            } else {
-                assert(!p->children.empty());
-                return p->children[0];
-            }
-        }
-    }
 
 
     BplusTree::BplusTree(int key_size) {
@@ -80,15 +21,16 @@ namespace algo {
     int BplusTree::Insert(const algo::Key &key, const algo::Value &value) {
         if (rootNode == nullptr) {
             rootNode = new BplusNode();
+            rootNode->isleaf = true;
             assert(rootNode->Insert(key, value) == 1);
             return 0;
         }
-        if (!Contain(key)) {
+        if (Contain(key)) {
             return 1;
         } else {
             BplusNode *node  = search(key);
             assert(node != nullptr);
-            if (node->Insert(key, value) >= max_key_size) {
+            if (node->Insert(key, value) > max_key_size) {
                 balance(node);
             }
         }
@@ -137,7 +79,7 @@ namespace algo {
         auto it = std::lower_bound(node->records.begin(), node->records.end(), key, [](const BplusRecord &rec, const Key &key){
             return rec.key < key ;
         });
-        if (it->key == key) {
+        if (it != node->records.end() && it->key == key) {
             return true;
         }
         return false;
@@ -151,6 +93,7 @@ namespace algo {
                                            [](const BplusNode *n, const Key &key) {
                                                return n->key < key;
                                            });
+
                 if ((*it)->key > key && it != root->children.begin()) {
                     it--;
                 } else if ((*it)->key > key && it == root->children.begin()) {
@@ -158,6 +101,7 @@ namespace algo {
                 }
                 root = *it;
             }
+            return  root;
         } else {
             return nullptr;
         }
@@ -165,30 +109,51 @@ namespace algo {
 
     int BplusTree::balance(algo::BplusNode *node) {
 
-        if (node->size() > max_key_size) {
-
-
-        } else if (node->size() < min_key_size) {
-            auto right = node->RightNode();
-            if (right == nullptr) {
-                auto left = node ->LeftNode();
-                if (left->size() + node->size() > max_key_size) {
-                    merge(node, left);
-                } else {
-                    node = merge(node, left);
-                    d
-                }
-
+        if (node->size() > max_key_size) { // insert
+            node->SplitTwo(min_key_size, max_key_size);
+            rootNode = node->RootNode();
+        } else if (node->size() < min_key_size) { // delete
+            auto n = rootNode->RemoveNode(node, min_key_size, max_key_size);
+            if (n != nullptr) {
+                rootNode = n->RootNode();
             } else {
-
+                rootNode == nullptr;
             }
-
         }
     }
 
 
     int BplusTree::remove(algo::BplusNode *node) {
+        if (node->parent == nullptr) { // root node
+            delete node;
+            rootNode = nullptr;
+            return 0;
+        }
+        int index = node->parent->childIndex(node);
+        assert(index >= 0);
+        auto sz = node->parent->removeIndex(index);
+        if (sz < min_key_size) {
+            balance(node->parent);
+        }
+        return 0;
+    }
 
+    BplusNode* BplusTree::merge(algo::BplusNode *left, algo::BplusNode *right) {
+        assert(left->level == right->level);
+
+        if (!left->isleaf) {
+            for (auto child : right->children) {
+                left->children.push_back(child);
+            }
+        } else  {
+            left->next = right->next;
+            for (auto rec : right->records) {
+                left->records.push_back(rec);
+            }
+        }
+
+        remove(right);
+        return  left;
     }
 
 
@@ -232,5 +197,38 @@ namespace algo {
             }
         }
         return node_;
+    }
+
+
+    void BplusTree::PrintTree() {
+        std::queue<BplusNode*> que;
+        if (rootNode == nullptr) {
+            std::cout << "null tree" << std::endl;
+            return ;
+        }
+        que.push(rootNode);
+        while (!que.empty()) {
+            auto p = que.front();
+            que.pop();
+            if (p->isleaf) {
+                std::cout << p->level << "\t" << p->key << "\t" << p->size() << "\t" << std::endl;
+                std::cout << "*****************" << std::endl;
+                for (auto rec : p->records) {
+                    std::cout << rec.key << "\t" << rec.value << "\t" <<  std::endl;
+                }
+                std::cout << "*****************" << std::endl;
+
+            } else {
+                std::cout << p->level << "\t" << p->key << "\t" << p->size() << "\t" << std::endl;
+                std::cout << "##################" << std::endl;
+                for (auto child : p->children) {
+                    std::cout << child->key << "\t" << std::endl;
+                    que.push(child);
+                }
+                std::cout << "##################" << std::endl;
+            }
+        }
+
+
     }
 }
